@@ -556,6 +556,11 @@ textarea.input {
   to { opacity: 1; }
 }
 .sheet {
+  top: auto;
+  right: auto;
+  margin: 0;
+  color: var(--text);
+  overscroll-behavior: contain;
   position: fixed;
   left: 50%;
   transform: translateX(-50%);
@@ -589,6 +594,18 @@ textarea.input {
   border-radius: 999px;
   background: var(--hairline);
   margin: 2px auto 12px;
+}
+
+.sheet::backdrop {
+  background: rgba(5, 3, 10, 0.6);
+}
+.sheet-heading {
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.sheet-heading h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 /* Day cards (plan) */
@@ -800,6 +817,9 @@ textarea.input {
   height: auto;
   filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.45));
 }
+.body-stage .bodyfig {
+  width: min(52vw, 180px);
+}
 .bodyfig .mg {
   cursor: pointer;
   transition: fill var(--ease), opacity var(--ease);
@@ -811,7 +831,8 @@ textarea.input {
   outline-offset: 2px;
 }
 .bodyfig .mg.pressed {
-  opacity: 0.75;
+  stroke: var(--action);
+  stroke-width: 2.5;
 }
 .flip {
   transition: transform 220ms ease;

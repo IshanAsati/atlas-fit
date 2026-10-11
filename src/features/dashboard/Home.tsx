@@ -24,7 +24,7 @@ export function Home() {
 
   const active = sessions.find((s) => s.state === 'active');
   const doneSessions = sessions.filter((s) => s.state === 'done');
-  const latestPlan = plans.length > 0 ? plans[plans.length - 1] : undefined;
+  const latestPlan = plans.length > 0 ? plans[0] : undefined;
 
   const nextDay = useMemo(() => {
     if (!latestPlan) return undefined;

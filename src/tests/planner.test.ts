@@ -98,9 +98,10 @@ describe('restrictions and experience', () => {
 
 describe('session construction (§7.2.6–7)', () => {
   it('is deterministic for fixed inputs', () => {
+    const norm = (p: ReturnType<typeof createPlan>) => ({ ...p.plan, createdAt: 0 });
     const a = createPlan(profile, EMPTY_HISTORY, CATALOG, 'fixed-id');
     const b = createPlan(profile, EMPTY_HISTORY, CATALOG, 'fixed-id');
-    expect(JSON.stringify(a.plan)).toBe(JSON.stringify(b.plan));
+    expect(JSON.stringify(norm(a))).toBe(JSON.stringify(norm(b)));
   });
   it('has no duplicate exercises within a day', () => {
     const { plan } = createPlan(profile, EMPTY_HISTORY, CATALOG);
