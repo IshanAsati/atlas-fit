@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../data/store';
-import { Credit, EmptyState, Sheet, TopBar } from '../../design/ui';
+import { Credit, EmptyState, SectionHead, Sheet, TopBar } from '../../design/ui';
 import { ChevronRight, GearIcon, PlayIcon, PlanIcon } from '../../design/icons';
 import { Bodygraph } from '../bodygraph/Bodygraph';
 import { buildSession } from '../workout/session';
@@ -73,6 +73,18 @@ export function Home() {
 
   const recent = doneSessions[0];
 
+  const totalSets = useMemo(
+    () =>
+      doneSessions.reduce(
+        (n, s) => n + s.items.reduce((m, it) => m + it.sets.filter((x) => x.done).length, 0),
+        0,
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sessions],
+  );
+
+  const initial = (profile?.displayName?.trim()?.[0] ?? 'A').toUpperCase();
+
   const startNext = async () => {
     if (!latestPlan || !nextDay) {
       navigate('/plan');
@@ -123,21 +135,24 @@ export function Home() {
         title={`Hi${name}`}
         sub={`${profile?.goal === 'strength' ? 'Strength' : profile?.goal === 'fitness' ? 'General fitness' : profile?.goal === 'technique' ? 'Technique' : profile?.goal === 'endurance' ? 'Endurance' : 'Mobility'} · ${profile?.activeLocation ?? 'home'} · ${profile?.daysPerWeek ?? 3} days/week`}
         right={
-          <button
-            type="button"
-            className="btn ghost small-btn"
-            onClick={() => setShowBackup(true)}
-            aria-label="Backup and settings"
-          >
-            <GearIcon />
-          </button>
+          <div className="row" style={{ gap: 10 }}>
+            <div className="avatar" aria-hidden="true">{initial}</div>
+            <button
+              type="button"
+              className="btn ghost small-btn"
+              onClick={() => setShowBackup(true)}
+              aria-label="Backup and settings"
+            >
+              <GearIcon />
+            </button>
+          </div>
         }
       />
 
       <main className="view">
         {active ? (
           <section className="hero">
-            <span className="eyebrow">Workout in progress</span>
+            <p className="eyebrow">Workout in progress</p>
             <span className="title">{active.title}</span>
             <p className="sub">Auto-saved — pick up where you left off.</p>
             <button type="button" className="btn primary block" onClick={() => navigate(`/workout/${active.id}`)}>
@@ -146,7 +161,7 @@ export function Home() {
           </section>
         ) : (
           <section className="hero">
-            <span className="eyebrow">{nextDay ? 'Next workout' : 'No plan yet'}</span>
+            <p className="eyebrow">{nextDay ? 'Next workout' : 'No plan yet'}</p>
             <span className="title">
               {nextDay ? `${nextDay.label} · ${nextDay.focus}` : 'Build your first plan'}
             </span>
@@ -155,6 +170,20 @@ export function Home() {
                 ? `${nextDay.exercises.length} exercises · ${profile?.durationMin ?? 45} min · ${profile?.activeLocation ?? 'home'}`
                 : 'Answer a few questions and Atlas Fit will assemble a week you can actually run.'}
             </p>
+            <div className="stat-grid" aria-label="Your training totals">
+              <div className="stat">
+                <b>{doneSessions.length}</b>
+                <span>Sessions</span>
+              </div>
+              <div className="stat">
+                <b>{totalSets}</b>
+                <span>Sets logged</span>
+              </div>
+              <div className="stat">
+                <b>{strip.filter((d) => d.hit).length}/7</b>
+                <span>Days active</span>
+              </div>
+            </div>
             <button type="button" className="btn primary block" onClick={startNext}>
               <PlayIcon /> {nextDay ? 'Start workout' : 'Create plan'}
             </button>
@@ -162,12 +191,12 @@ export function Home() {
         )}
 
         <section className="panel">
-          <div className="row between" style={{ marginBottom: 10 }}>
-            <h2 className="h-sec">Last 7 days</h2>
-            <span className="small">
-              {strip.filter((d) => d.hit).length} trained
-            </span>
-          </div>
+          <SectionHead
+            title="Last 7 days"
+            action={
+              <span className="small">{strip.filter((d) => d.hit).length} trained</span>
+            }
+          />
           <div className="strip">
             {strip.map((d, i) => (
               <div key={i} className={`cell${d.hit ? ' hit' : ''}`} aria-label={`${d.label}${d.hit ? ', trained' : ', no workout'}`}>
@@ -178,7 +207,9 @@ export function Home() {
         </section>
 
         <section>
-          <h2 className="h-sec" style={{ marginBottom: 8 }}>Recent session</h2>
+          <div style={{ marginBottom: 10 }}>
+            <SectionHead title="Recent session" />
+          </div>
           {recent ? (
             <div className="panel">
               <div className="row between">
@@ -209,12 +240,14 @@ export function Home() {
         </section>
 
         <section className="panel">
-          <div className="row between" style={{ marginBottom: 6 }}>
-            <h2 className="h-sec">Your muscle map</h2>
-            <button type="button" className="btn ghost small-btn" onClick={() => navigate('/bodygraph')}>
-              Explore <ChevronRight />
-            </button>
-          </div>
+          <SectionHead
+            title="Your muscle map"
+            action={
+              <button type="button" className="btn ghost small-btn" onClick={() => navigate('/bodygraph')}>
+                Explore <ChevronRight />
+              </button>
+            }
+          />
           <div className="bodywrap">
             <Bodygraph view="front" activity={weekActivity} />
             <p className="small">
@@ -272,7 +305,7 @@ export function Home() {
             type="button"
             className="btn ghost block"
             style={{ marginTop: 8 }}
-            onClick={() => navigate('/onboarding')}
+            onClick={() => navigate('/onboarding?edit=1')}
           >
             Edit preferences
           </button>

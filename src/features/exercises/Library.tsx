@@ -100,6 +100,7 @@ export function Library() {
   const [muscle, setMuscle] = useState<MuscleId | 'all'>('all');
   const [difficulty, setDifficulty] = useState<'all' | 1 | 2 | 3>('all');
   const [favouritesOnly, setFavouritesOnly] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const favourites = profile?.favourites ?? [];
   const restrictions = profile?.restrictions ?? [];
@@ -173,6 +174,10 @@ export function Library() {
         <section className="panel" aria-label="Filters">
           <div className="row between">
             <h2 className="h-sec">Filters</h2>
+            <button type="button" className="btn ghost small-btn" aria-expanded={filtersOpen}
+              aria-controls="library-filter-controls" onClick={() => setFiltersOpen((open) => !open)}>
+              {filtersOpen ? 'Hide filters' : 'Show filters'}
+            </button>
             {hasFilters ? (
               <button type="button" className="btn ghost small-btn" onClick={clearFilters}>
                 Clear filters
@@ -180,6 +185,7 @@ export function Library() {
             ) : null}
           </div>
 
+          <div id="library-filter-controls" hidden={!filtersOpen}>
           <p className="small" style={{ margin: '12px 0 6px' }}>
             Where you'll train
           </p>
@@ -264,6 +270,7 @@ export function Library() {
               </span>
               Favourites only
             </button>
+          </div>
           </div>
         </section>
 

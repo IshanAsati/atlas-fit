@@ -54,8 +54,13 @@ export function Bodygraph(props: BodygraphProps) {
   const labelFor = (id: MuscleId, side?: 'left' | 'right'): string => {
     const meta = MUSCLE_BY_ID[id];
     const sideText = side ? ` (${side})` : '';
-    const suffix = props.labelSuffix ? `, ${props.labelSuffix}` : '';
-    return `${meta.short}${sideText}${suffix}`;
+    const classification = props.activity
+      ? `${props.activity[id] ?? 0} estimated working sets`
+      : props.targets
+        ? `${props.targets[id] === 'primary' ? 'primary target' : props.targets[id] === 'secondary' ? 'secondary target' : 'not targeted'}`
+        : '';
+    const suffix = [classification, props.labelSuffix].filter(Boolean).join(', ');
+    return `${meta.short}${sideText}${suffix ? `, ${suffix}` : ''}`;
   };
 
   return (
@@ -73,7 +78,7 @@ export function Bodygraph(props: BodygraphProps) {
         const common = {
           className: `mg${isSelected ? ' pressed' : ''}`,
           style,
-          role: 'button' as const,
+          role: onSelect ? 'button' as const : undefined,
           tabIndex: onSelect ? 0 : -1,
           'aria-label': labelFor(shape.id, shape.side),
           'aria-pressed': onSelect ? isSelected : undefined,

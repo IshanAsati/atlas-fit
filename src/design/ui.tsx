@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { REPDB_URL } from '../data/repdb';
 
 export function TopBar({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
@@ -15,7 +15,7 @@ export function TopBar({ title, sub, right }: { title: string; sub?: string; rig
   );
 }
 
-/** Bottom sheet with scrim, ESC-to-close and focusable content. */
+/** Native modal: traps focus, makes the background inert and restores focus. */
 export function Sheet({
   open,
   onClose,
@@ -27,25 +27,43 @@ export function Sheet({
   title?: string;
   children: ReactNode;
 }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    dialog.showModal();
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      dialog.close();
+      document.body.style.overflow = previousOverflow;
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
   return (
-    <>
-      <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <div className="sheet" role="dialog" aria-modal="true" aria-label={title ?? 'Details'}>
+      <dialog
+        ref={dialogRef}
+        className="sheet"
+        aria-labelledby={titleId}
+        onCancel={(event) => { event.preventDefault(); onClose(); }}
+        onClick={(event) => {
+          if (event.target !== event.currentTarget) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          if (event.clientX < rect.left || event.clientX > rect.right ||
+              event.clientY < rect.top || event.clientY > rect.bottom) onClose();
+        }}
+      >
         <div className="grab" aria-hidden="true" />
-        {title ? <h2 className="h-sec" style={{ margin: '0 0 10px' }}>{title}</h2> : null}
+        <div className="row between sheet-heading">
+          <h2 id={titleId} className="h-sec">{title ?? 'Details'}</h2>
+          <button type="button" className="btn ghost small-btn" onClick={onClose}>Close</button>
+        </div>
         {children}
-      </div>
-    </>
+      </dialog>
   );
 }
 
@@ -57,6 +75,21 @@ export function EmptyState({ title, body, action }: { title: string; body: strin
       {action ? <div style={{ marginTop: 12 }}>{action}</div> : null}
     </div>
   );
+}
+
+/** Section header: condensed title + trailing action (single-column rhythm). */
+export function SectionHead({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="section-head">
+      <h2 className="h-sec">{title}</h2>
+      {action}
+    </div>
+  );
+}
+
+/** Shimmer placeholder for async states — never a frozen blank screen. */
+export function Skeleton({ height = 20, label }: { height?: number; label: string }) {
+  return <div className="skeleton" style={{ height }} role="status" aria-label={label} />;
 }
 
 /** Required visible attribution for the RepDB Free dataset (§6.1). */

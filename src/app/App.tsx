@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { StoreProvider, useStore } from '../data/store';
 import { BodyIcon, BookIcon, HomeIcon, PlanIcon, TimerIcon } from '../design/icons';
@@ -63,13 +64,20 @@ function TabBar() {
 
 function Gate() {
   const { profile, profileLoaded } = useStore();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
 
   if (!profileLoaded) {
     return (
       <div className="shell">
-        <div className="view" style={{ justifyContent: 'center', alignItems: 'center' }}>
-          <p className="sub">Loading Atlas Fit…</p>
+        <div className="view" style={{ paddingTop: 64 }}>
+          <div className="skeleton" style={{ height: 28, width: '55%' }} role="status" aria-label="Loading Atlas Fit" />
+          <div className="skeleton" style={{ height: 190, borderRadius: 22 }} role="status" aria-label="Loading Atlas Fit" />
+          <div className="skeleton" style={{ height: 110 }} role="status" aria-label="Loading Atlas Fit" />
+          <div className="skeleton" style={{ height: 110 }} role="status" aria-label="Loading Atlas Fit" />
         </div>
       </div>
     );
@@ -79,7 +87,9 @@ function Gate() {
   const onOnboarding = pathname.startsWith('/onboarding');
 
   if (!onboarded && !onOnboarding) return <Navigate to="/onboarding" replace />;
-  if (onboarded && onOnboarding) return <Navigate to="/home" replace />;
+  if (onboarded && onOnboarding && new URLSearchParams(search).get('edit') !== '1') {
+    return <Navigate to="/home" replace />;
+  }
 
   return (
     <div className="shell">

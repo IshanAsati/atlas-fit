@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -83,6 +84,8 @@ const StoreContext = createContext<StoreValue | null>(null);
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const profileRef = useRef<UserProfile | null>(null);
+  const profileSave = useRef<Promise<void>>(Promise.resolve());
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [repdbLoaded, setRepdbLoaded] = useState(false);
   const [extraExercises, setExtraExercises] = useState<Exercise[]>([]);
@@ -92,6 +95,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     loadProfile()
       .then((p) => {
         if (!cancelled) {
+          profileRef.current = p;
           setProfile(p);
           setProfileLoaded(true);
         }
@@ -154,12 +158,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [catalog],
   );
 
-  const updateProfile = useCallback(async (patch: Partial<UserProfile>) => {
-    setProfile((prev) => {
-      const next = { ...(prev ?? DEFAULT_PROFILE), ...patch };
-      void saveProfile(next).catch(() => undefined);
-      return next;
+  const updateProfile = useCallback((patch: Partial<UserProfile>): Promise<void> => {
+    const saved = profileSave.current.catch(() => undefined).then(async () => {
+      const next = { ...(profileRef.current ?? DEFAULT_PROFILE), ...patch };
+      await saveProfile(next);
+      profileRef.current = next;
+      setProfile(next);
     });
+    profileSave.current = saved;
+    return saved;
   }, []);
 
   const saveSession = useCallback(async (s: WorkoutSession) => {

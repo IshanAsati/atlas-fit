@@ -40,7 +40,9 @@ export function BodygraphScreen() {
   const [mode, setMode] = useState<'targets' | 'activity'>('targets');
   const [view, setView] = useState<View>('front');
   const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  // Start with a clearly labelled example so the muscle color mapping is visible on first open.
+  const [selectedId, setSelectedId] = useState<string | null>('push-up');
   const [windowDays, setWindowDays] = useState<7 | 30 | 90>(7);
   const [sheetMuscle, setSheetMuscle] = useState<MuscleId | null>(null);
 
@@ -56,8 +58,11 @@ export function BodygraphScreen() {
             e.aliases.some((a) => a.toLowerCase().includes(q)),
         )
       : sorted;
-    return matched.slice(0, q ? 40 : 12);
-  }, [catalog, query]);
+    if (q) return matched.slice(0, 40);
+    const selected = selectedId ? matched.find((exercise) => exercise.id === selectedId) : undefined;
+    const rest = selected ? matched.filter((exercise) => exercise.id !== selected.id) : matched;
+    return [...(selected ? [selected] : []), ...rest].slice(0, 12);
+  }, [catalog, query, selectedId]);
 
   const selectedExercise = selectedId ? byId(selectedId) : undefined;
 
@@ -185,51 +190,13 @@ export function BodygraphScreen() {
 
         {isTargets ? (
           <section className="panel">
-            <h2 className="h-sec" style={{ marginBottom: 8 }}>
-              Pick an exercise
-            </h2>
-            <input
-              className="input"
-              type="search"
-              value={query}
-              placeholder="Search exercises…"
-              aria-label="Search exercises"
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <p className="small" style={{ margin: '8px 0 4px' }}>
-              {selectedExercise ? (
-                <>
-                  Showing targets for <strong>{selectedExercise.name}</strong>. Tap a muscle for
-                  details.
-                </>
-              ) : (
-                'Search and pick an exercise to colour the map.'
-              )}
-            </p>
-            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
-              {results.map((ex) => {
-                const active = ex.id === selectedId;
-                return (
-                  <button
-                    key={ex.id}
-                    type="button"
-                    className="exrow"
-                    aria-pressed={active}
-                    style={active ? { background: 'var(--surface-2)' } : undefined}
-                    onClick={() => setSelectedId(ex.id)}
-                  >
-                    <span className="dot" aria-hidden="true" />
-                    <span className="grow">{ex.name}</span>
-                    <span className="meta">{ex.movement}</span>
-                  </button>
-                );
-              })}
+            <div className="row between">
+              <div className="grow">
+                <p className="small" style={{ margin: '0 0 4px' }}>Exercise targets</p>
+                <h2 className="h-sec">{selectedExercise?.name ?? 'Pick an exercise'}</h2>
+              </div>
+              <button type="button" className="btn ghost small-btn" onClick={() => setPickerOpen(true)}>Change</button>
             </div>
-            {results.length === 0 ? (
-              <p className="small" style={{ marginTop: 8 }}>
-                No exercises match “{query}”.
-              </p>
-            ) : null}
           </section>
         ) : (
           <section className="panel">
@@ -282,7 +249,7 @@ export function BodygraphScreen() {
 
           <div style={{ perspective: '900px' }}>
             <div
-              className="bodywrap flip"
+              className="bodywrap body-stage flip"
               style={{
                 transform: view === 'back' ? 'rotateY(12deg)' : 'none',
               }}
@@ -301,7 +268,7 @@ export function BodygraphScreen() {
             <>
               {TARGET_LEGEND}
               <p className="small" style={{ marginTop: 8 }}>
-                Colours show classification, not measured muscle activation.
+                Tap a muscle to explore. Colours classify targets, not measured activation.
               </p>
             </>
           ) : (
@@ -393,6 +360,25 @@ export function BodygraphScreen() {
         </section>
 
         <Credit />
+
+        <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Pick an exercise">
+          <div className="field">
+            <label htmlFor="body-exercise-search">Search exercises</label>
+            <input id="body-exercise-search" className="input" type="search" value={query}
+              placeholder="Name or alias" onChange={(event) => setQuery(event.target.value)} />
+          </div>
+          <p className="small">Choose a movement to see its primary and secondary targets.</p>
+          {results.map((exercise) => (
+            <button key={exercise.id} type="button" className="exrow"
+              aria-pressed={exercise.id === selectedId}
+              onClick={() => { setSelectedId(exercise.id); setPickerOpen(false); setQuery(''); }}>
+              <span className="dot" aria-hidden="true" />
+              <span className="grow">{exercise.name}</span>
+              <span className="meta">{exercise.id === selectedId ? 'Selected' : 'View targets'}</span>
+            </button>
+          ))}
+          {results.length === 0 ? <p className="small" role="status">No matches. Try another exercise name.</p> : null}
+        </Sheet>
 
         {/* Muscle detail sheet */}
         <Sheet

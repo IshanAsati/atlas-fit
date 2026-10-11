@@ -22,7 +22,7 @@ export function PlanScreen() {
   const [swapFor, setSwapFor] = useState<{ dayId: string; exerciseId: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const plan = current ?? (plans.length > 0 ? plans[plans.length - 1] : null);
+  const plan = current ?? (plans.length > 0 ? plans[0] : null);
   const history = useMemo(() => buildHistory(sessions), [sessions]);
 
   const draftPlan = useMemo(() => {

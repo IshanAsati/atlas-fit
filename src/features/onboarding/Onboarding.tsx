@@ -4,6 +4,7 @@ import { DEFAULT_PROFILE, useStore } from '../../data/store';
 import { EQUIPMENT, DEFAULT_EQUIPMENT } from '../../data/equipment';
 import { CATALOG } from '../../data/catalog';
 import { createPlan, EMPTY_HISTORY } from '../planner/engine';
+import { putPlan } from '../../data/db';
 import { Credit } from '../../design/ui';
 import type { Experience, Goal, LocationType, UserProfile } from '../../data/types';
 
@@ -37,13 +38,15 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const TOTAL_STEPS = 11;
 
 export function Onboarding() {
-  const { updateProfile } = useStore();
+  const { profile, updateProfile } = useStore();
+  const editing = profile?.onboarded === true;
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<UserProfile>({ ...DEFAULT_PROFILE });
+  const [draft, setDraft] = useState<UserProfile>(() => structuredClone(profile ?? DEFAULT_PROFILE));
   const [equipQuery, setEquipQuery] = useState('');
   const [exQuery, setExQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const set = (patch: Partial<UserProfile>) => setDraft((d) => ({ ...d, ...patch }));
 
@@ -69,8 +72,16 @@ export function Onboarding() {
 
   const finish = async () => {
     setSaving(true);
-    await updateProfile({ ...draft, onboarded: true });
-    navigate('/home', { replace: true });
+    setSaveError('');
+    try {
+      await putPlan(preview.plan);
+      await updateProfile({ ...draft, onboarded: true });
+      navigate('/home', { replace: true });
+    } catch {
+      setSaveError('Could not save your plan. Check device storage and try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const toggleEquip = (id: string) => {
@@ -89,23 +100,25 @@ export function Onboarding() {
     set({ restrictions: nextList });
   };
 
-  const stepProgress = Math.round((step / TOTAL_STEPS) * 100);
+  const stepProgress = Math.round(((step + 1) / TOTAL_STEPS) * 100);
 
   return (
     <>
       <header className="topbar">
         <div className="row between">
           <div>
-            <h1>Set up Atlas Fit</h1>
+            <h1>{editing ? 'Edit preferences' : 'Set up Atlas Fit'}</h1>
             <p>Step {step + 1} of {TOTAL_STEPS} · saved only on this device</p>
           </div>
           {step > 0 ? (
             <button type="button" className="btn ghost small-btn" onClick={back}>
               Back
             </button>
+          ) : editing ? (
+            <button type="button" className="btn ghost small-btn" onClick={() => navigate('/home')}>Cancel</button>
           ) : null}
         </div>
-        <div className="pbar" style={{ marginTop: 10 }}>
+        <div className="pbar" role="progressbar" aria-label="Setup progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={stepProgress} style={{ marginTop: 10 }}>
           <div style={{ width: `${stepProgress}%` }} />
         </div>
       </header>
@@ -452,8 +465,9 @@ export function Onboarding() {
             {preview.warnings.length > 0 ? (
               <div className="banner preview">{preview.warnings.join(' ')}</div>
             ) : null}
+            {saveError ? <p className="banner" role="alert">{saveError}</p> : null}
             <button type="button" className="btn primary block" style={{ marginTop: 6 }} disabled={saving} onClick={finish}>
-              {saving ? 'Saving…' : 'Start training'}
+              {saving ? 'Saving…' : editing ? 'Save preferences & plan' : 'Start training'}
             </button>
             <Credit />
           </section>
