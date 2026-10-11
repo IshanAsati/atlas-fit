@@ -107,7 +107,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // the 609-entry dataset chunk (~1.7 MB) loads in the background.
   useEffect(() => {
     let cancelled = false;
-    let timer = 0;
+    const w = globalThis as unknown as {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+      setTimeout: (cb: () => void, ms: number) => number;
+      clearTimeout: (id: number) => void;
+    };
     const load = () => {
       void loadRepdbCatalog()
         .then((entries) => {
@@ -117,17 +122,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         })
         .catch(() => setRepdbLoaded(true));
     };
-    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
-      const idle = (window as unknown as { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(load);
+    if (w.requestIdleCallback) {
+      const idle = w.requestIdleCallback(load);
       return () => {
         cancelled = true;
-        (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idle);
+        w.cancelIdleCallback?.(idle);
       };
     }
-    timer = window.setTimeout(load, 2500);
+    const timer = w.setTimeout(load, 2500);
     return () => {
       cancelled = true;
-      window.clearTimeout(timer);
+      w.clearTimeout(timer);
     };
   }, []);
 
