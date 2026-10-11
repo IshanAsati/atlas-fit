@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Atlas Fit">
+  <title>Atlas Fit</title>
+  <defs>
+    <!-- Tile sheen, mirrors the .hero gradient in src/design/tokens.css -->
+    <linearGradient id="atlas-tile" gradientUnits="userSpaceOnUse" x1="44" y1="44" x2="468" y2="468">
+      <stop offset="0" stop-color="#241d33"/>
+      <stop offset="0.7" stop-color="#27222f"/>
+      <stop offset="1" stop-color="#27222f"/>
+    </linearGradient>
+    <!-- Mark gradient: action blue (bottom-left) -> accent lilac (top-right) -->
+    <linearGradient id="atlas-mark" gradientUnits="userSpaceOnUse" x1="140" y1="380" x2="372" y2="132" color-interpolation="sRGB">
+      <stop offset="0" stop-color="#57b9fa"/>
+      <stop offset="1" stop-color="#ba83f7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" fill="#131019"/>
+
+  <!-- Rounded tile; 1.5 hairline straddles the 44px inset -->
+  <rect x="44.75" y="44.75" width="422.5" height="422.5" rx="104"
+        fill="url(#atlas-tile)" stroke="#3d3549" stroke-width="1.5"/>
+
+  <!-- Original mark: a stylised "A" of two diagonal strokes plus a crossbar -->
+  <g fill="none" stroke="url(#atlas-mark)" stroke-width="44"
+     stroke-linecap="round" stroke-linejoin="round">
+    <path d="M152 372 L256 140 L360 372"/>
+    <path d="M206 300 H306" stroke-linecap="butt"/>
+  </g>
+</svg>
