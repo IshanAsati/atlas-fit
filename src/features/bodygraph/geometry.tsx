@@ -11,6 +11,11 @@ import type { MuscleId } from '../../data/types';
  * several segments (abs six-pack, quad heads, calf heads) use one entry per
  * segment sharing a single ID and colour, which also gives the segmented look
  * from the study. Canvas: 0 0 200 400.
+ *
+ * Construction notes: limb bases are narrow and each muscle shape fills ~80%
+ * of its limb (thin base outline only). Arms tuck under the torso (painted
+ * after the arms) so there is no floating gap at the armpit. Limbs taper and
+ * drift slightly outward going down; the torso pinches at the waist.
  */
 
 export type View = 'front' | 'back';
@@ -90,42 +95,42 @@ function mirrorLeft(list: MuscleShape[]): MuscleShape[] {
 
 const FRONT_LEFT: MuscleShape[] = [
   // Front deltoid cap (shoulder)
-  P('front_delts', 'left', 'M56 78 Q58 62 74 60 L86 63 Q82 79 70 85 Q58 88 56 78 Z'),
+  P('front_delts', 'left', 'M52 70 Q54 56 71 54 L85 57 Q81 76 67 81 Q54 84 52 70 Z'),
   // Outer side-delt sliver
-  E('side_delts', 'left', [53, 86, 5.5, 11]),
-  // Pectoral (rounded)
+  E('side_delts', 'left', [48, 80, 5, 10]),
+  // Pectoral slab (centre sternum gap preserved by mirroring)
   P(
     'chest',
     'left',
-    'M68 80 Q82 70 99 76 L98 92 Q96 103 85 107 Q73 107 68 96 Q64 87 68 80 Z',
+    'M65 77 Q81 68 97 74 L96 94 Q94 105 82 108 Q69 107 64 95 Q60 85 65 77 Z',
   ),
   // Biceps mass (fills the upper arm)
   P(
     'biceps',
     'left',
-    'M54 96 Q50 120 54 144 Q56 151 62 150 Q68 149 68 141 L67 102 Q61 94 54 96 Z',
+    'M50 94 Q45 120 49 144 Q51 151 57 150 Q63 149 63 140 L62 100 Q58 92 50 94 Z',
   ),
   // Forearm (tapered, fills the lower arm)
   P(
     'forearms',
     'left',
-    'M49 154 L68 154 L64 206 Q63 212 57 211 Q51 210 50 202 Z',
+    'M49 152 L66 152 L61 200 Q60 206 55 205 Q50 204 49 196 Z',
   ),
   // Oblique strip
-  P('obliques', 'left', 'M79 114 Q74 134 77 162 L85 162 Q83 136 86 116 Z'),
+  P('obliques', 'left', 'M75 111 Q70 133 73 162 L81 162 Q79 136 82 113 Z'),
   // Quad heads: outer sweep, centre mass, inner teardrop
-  P('quads', 'left', 'M74 212 Q69 240 74 266 Q76 272 80 271 Q84 270 84 260 L84 216 Z'),
-  P('quads', 'left', 'M85 210 L96 210 L95 264 Q94 272 89 272 Q84 272 84 262 Z'),
-  P('quads', 'left', 'M76 252 Q81 244 87 249 Q92 256 87 267 Q81 271 76 267 Z'),
+  P('quads', 'left', 'M72 210 Q68 238 72 263 Q74 269 78 268 Q81 267 81 257 L81 214 Z'),
+  P('quads', 'left', 'M82 208 L94 208 L93 261 Q92 269 87 269 Q82 269 82 259 Z'),
+  P('quads', 'left', 'M73 249 Q78 241 84 246 Q89 253 84 264 Q78 268 73 264 Z'),
   // Calf heads
-  E('calves', 'left', [82, 312, 7, 20]),
-  E('calves', 'left', [91, 314, 6, 18]),
+  E('calves', 'left', [79, 312, 6, 18]),
+  E('calves', 'left', [86, 314, 5, 16]),
 ];
 
 /** Abs six-pack: 3 rows × 2 rounded columns, shared `abs` id. */
-const ABS_SEGMENTS: MuscleShape[] = [116, 131, 146].flatMap((y): MuscleShape[] => [
-  { id: 'abs', side: 'left' as Side, path: rrect(87, y, 11, 13, 3.5) },
-  { id: 'abs', side: 'right' as Side, path: rrect(102, y, 11, 13, 3.5) },
+const ABS_SEGMENTS: MuscleShape[] = [114, 129, 144].flatMap((y): MuscleShape[] => [
+  { id: 'abs', side: 'left' as Side, path: rrect(85, y, 13, 13, 4.5) },
+  { id: 'abs', side: 'right' as Side, path: rrect(102, y, 13, 13, 4.5) },
 ]);
 
 export const FRONT_SHAPES: MuscleShape[] = [...mirrorLeft(FRONT_LEFT), ...ABS_SEGMENTS];
@@ -134,43 +139,43 @@ export const FRONT_SHAPES: MuscleShape[] = [...mirrorLeft(FRONT_LEFT), ...ABS_SE
 
 const BACK_LEFT: MuscleShape[] = [
   // Trapezius half-kite (right twin added below)
-  P('traps', undefined, 'M90 56 L100 61 L100 88 L80 76 Q84 62 90 56 Z'),
+  P('traps', undefined, 'M87 52 L100 58 L100 106 L90 104 L76 70 Q80 56 87 52 Z'),
   // Rear delt cap
-  P('rear_delts', 'left', 'M56 80 Q59 64 75 62 L85 66 Q81 81 69 86 Q58 89 56 80 Z'),
-  E('side_delts', 'left', [53, 88, 5.5, 10]),
+  P('rear_delts', 'left', 'M52 72 Q55 58 72 56 L84 60 Q80 78 66 82 Q54 85 52 72 Z'),
+  E('side_delts', 'left', [48, 82, 5, 10]),
   // Triceps (long + lateral head)
   P(
     'triceps',
     'left',
-    'M55 98 Q51 122 55 144 Q57 151 62 150 Q67 149 67 141 L66 104 Q60 96 55 98 Z',
+    'M51 96 Q47 122 51 143 Q53 150 58 149 Q63 148 63 140 L62 102 Q58 94 51 96 Z',
   ),
-  P('triceps', 'left', 'M68 106 Q71 124 69 142 Q68 148 65 147 Q62 146 62 140 Z'),
+  P('triceps', 'left', 'M64 104 Q67 122 65 139 Q64 145 61 144 Q58 143 58 137 Z'),
   // Forearm extensors
-  P('forearms', 'left', 'M50 156 L68 156 L64 208 Q63 213 57 212 Q52 211 51 203 Z'),
+  P('forearms', 'left', 'M49 154 L66 154 L61 202 Q60 207 54 206 Q49 205 48 197 Z'),
   // Lat wing
-  P('lats', 'left', 'M70 94 Q62 122 70 154 L79 162 L88 154 Q81 124 84 98 Z'),
+  P('lats', 'left', 'M66 90 Q58 121 66 153 L76 162 L86 154 Q79 123 82 94 Z'),
   // Upper back (rhomboid diamond)
-  P('upper_back', 'left', 'M85 102 L97 111 L88 134 L79 118 Z'),
+  P('upper_back', 'left', 'M83 99 L95 108 L86 131 L77 115 Z'),
   // Erector column
-  P('erectors', 'left', 'M89 138 L96 138 L95 178 L88 178 Z'),
+  P('erectors', 'left', 'M87 135 L94 135 L93 177 L86 177 Z'),
   // Glute
   P(
     'glutes',
     'left',
-    'M76 192 Q76 180 90 180 L97 183 L96 206 Q88 212 80 207 Q76 201 76 192 Z',
+    'M72 189 Q72 177 87 177 L96 180 L95 205 Q86 212 77 207 Q72 200 72 189 Z',
   ),
   // Hamstrings: outer + inner belly
-  P('hamstrings', 'left', 'M76 214 Q72 242 77 266 Q79 272 83 271 Q86 270 86 260 L85 218 Z'),
-  P('hamstrings', 'left', 'M87 214 L94 214 L93 264 Q92 270 88 270 Q84 270 84 260 Z'),
+  P('hamstrings', 'left', 'M72 210 Q68 238 73 263 Q75 269 79 268 Q82 267 82 257 L81 214 Z'),
+  P('hamstrings', 'left', 'M83 212 L92 212 L91 261 Q90 267 86 267 Q82 267 82 257 Z'),
   // Calf heads
-  E('calves', 'left', [82, 314, 7, 20]),
-  E('calves', 'left', [91, 316, 6, 18]),
+  E('calves', 'left', [79, 314, 6, 18]),
+  E('calves', 'left', [86, 316, 5, 16]),
 ];
 
 export const BACK_SHAPES: MuscleShape[] = [
   ...mirrorLeft(BACK_LEFT),
   // Traps right twin (centre shape mirrored manually)
-  P('traps', undefined, 'M110 56 L100 61 L100 88 L120 76 Q116 62 110 56 Z'),
+  P('traps', undefined, 'M113 52 L100 58 L100 106 L110 104 L124 70 Q120 56 113 52 Z'),
 ];
 
 export const SHAPES_BY_VIEW: Record<View, MuscleShape[]> = {
@@ -178,55 +183,62 @@ export const SHAPES_BY_VIEW: Record<View, MuscleShape[]> = {
   back: BACK_SHAPES,
 };
 
-/** Non-interactive base: ivory athletic figure, lavender hair, tapered torso. */
+/**
+ * Non-interactive base. Paint order matters: arms and legs first, torso over
+ * the arms (hides the armpit seam), then head, hands and feet.
+ */
 export function Silhouette({ view }: { view: View }) {
   const skin = '#f2f0f7';
-  const shade = '#e2dfee';
+  const shade = '#e0dcee';
   const hair = '#b9b4cc';
   const line = '#cfccdd';
+
+  // Left-side limb bases; right sides are mirrored in code.
+  const upperArmL = 'M52 68 L72 66 L69 150 L49 150 Z';
+  const forearmL = 'M49 148 L69 148 L65 204 L47 204 Z';
+  const thighL = 'M71 206 L97 206 L94 276 L74 276 Z';
+  const shinL = 'M75 289 L93 289 L90 354 L78 354 Z';
+
   return (
     <g aria-hidden="true">
-      {/* Hair */}
-      <path
-        d="M84 26 Q84 8 100 8 Q116 8 116 26 Q114 20 110 22 Q110 16 104 18 Q102 13 97 17 Q91 14 90 21 Q86 20 84 26 Z"
-        fill={hair}
-      />
-      {/* Head (faceless) */}
-      <ellipse cx="100" cy="30" rx="15" ry="18" fill={skin} />
-      {/* Neck */}
-      <path d="M92 44 L108 44 L106 60 L94 60 Z" fill={shade} />
+      {/* Arms (torso will cover their inner edge) */}
+      <path d={upperArmL} fill={shade} />
+      <path d={mirrorPath(upperArmL)} fill={shade} />
+      <path d={forearmL} fill={skin} />
+      <path d={mirrorPath(forearmL)} fill={skin} />
+      {/* Legs */}
+      <path d={thighL} fill={shade} />
+      <path d={mirrorPath(thighL)} fill={shade} />
+      {/* Knees */}
+      <circle cx="85" cy="283" r="7.5" fill={skin} />
+      <circle cx="115" cy="283" r="7.5" fill={skin} />
+      <path d={shinL} fill={skin} />
+      <path d={mirrorPath(shinL)} fill={skin} />
       {/* Torso: broad shoulders tapering to the waist */}
       <path
-        d="M62 66 Q100 54 138 66 L136 104 Q132 140 124 162 L122 198 Q100 206 78 198 L76 162 Q68 140 64 104 Z"
+        d="M59 64 Q100 54 141 64 L138 104 Q134 136 127 158 L125 197 Q100 204 75 197 L73 158 Q66 136 62 104 Z"
         fill={skin}
       />
       {/* Pelvis */}
-      <path d="M78 198 L122 198 L118 216 L82 216 Z" fill={skin} />
-      {/* Upper arms (tapered, angled slightly out) */}
-      <path d="M50 72 L78 70 L71 152 L47 152 Z" fill={shade} />
-      <path d="M150 72 L122 70 L129 152 L153 152 Z" fill={shade} />
-      {/* Forearms */}
-      <path d="M45 150 L72 150 L67 210 L43 210 Z" fill={skin} />
-      <path d="M155 150 L128 150 L133 210 L157 210 Z" fill={skin} />
-      {/* Hands with finger hints */}
-      <ellipse cx="55" cy="222" rx="10" ry="13" fill={skin} />
-      <ellipse cx="145" cy="222" rx="10" ry="13" fill={skin} />
-      <line x1="51" y1="224" x2="51" y2="232" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="56" y1="225" x2="56" y2="234" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="149" y1="224" x2="149" y2="232" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
-      <line x1="144" y1="225" x2="144" y2="234" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
-      {/* Thighs */}
-      <path d="M70 212 L98 212 L95 276 L73 276 Z" fill={shade} />
-      <path d="M130 212 L102 212 L105 276 L127 276 Z" fill={shade} />
-      {/* Knees */}
-      <circle cx="85" cy="283" r="8.5" fill={skin} />
-      <circle cx="115" cy="283" r="8.5" fill={skin} />
-      {/* Lower legs */}
-      <path d="M74 290 L96 290 L93 358 L77 358 Z" fill={skin} />
-      <path d="M126 290 L104 290 L107 358 L123 358 Z" fill={skin} />
+      <path d="M75 197 L125 197 L120 214 L80 214 Z" fill={skin} />
+      {/* Neck + head (faceless) */}
+      <path d="M92 40 L108 40 L106 58 L94 58 Z" fill={shade} />
+      <ellipse cx="100" cy="26" rx="12.5" ry="15.5" fill={skin} />
+      {/* Hair cap */}
+      <path
+        d="M87 23 Q87 9 100 9 Q113 9 113 23 Q111 17 107 19 Q107 14 102 16 Q100 12 96 16 Q91 13 90 19 Q86 18 87 23 Z"
+        fill={hair}
+      />
+      {/* Hands with finger grooves */}
+      <ellipse cx="53" cy="220" rx="9.5" ry="12" fill={skin} />
+      <ellipse cx="147" cy="220" rx="9.5" ry="12" fill={skin} />
+      <line x1="49" y1="222" x2="49" y2="230" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="54" y1="223" x2="54" y2="232" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="151" y1="222" x2="151" y2="230" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
+      <line x1="146" y1="223" x2="146" y2="232" stroke={line} strokeWidth="1.6" strokeLinecap="round" />
       {/* Feet */}
-      <rect x="69" y="356" width="28" height="16" rx="7" fill={skin} />
-      <rect x="103" y="356" width="28" height="16" rx="7" fill={skin} />
+      <rect x="68" y="354" width="26" height="16" rx="7" fill={skin} />
+      <rect x="106" y="354" width="26" height="16" rx="7" fill={skin} />
       {view === 'back' && (
         <line
           x1="100"

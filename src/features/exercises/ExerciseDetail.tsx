@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { equipmentLabel } from '../../data/equipment';
 import { MUSCLE_BY_ID } from '../../data/muscles';
 import { useStore } from '../../data/store';
-import { ChevronRight } from '../../design/icons';
+import { ChevronRight, PinIcon, StarIcon, ThumbDownIcon, ThumbUpIcon, WarnIcon } from '../../design/icons';
 import { EmptyState, Sheet, TARGET_LEGEND, TopBar } from '../../design/ui';
+import { ExerciseFigure } from '../../design/ExerciseFigure';
 import { Bodygraph } from '../bodygraph/Bodygraph';
 import type { Exercise, ExerciseFeedback, Movement, MuscleId } from '../../data/types';
 
@@ -240,6 +241,9 @@ export function ExerciseDetail() {
       />
 
       <main className="view">
+        {/* Licensed illustration or honest placeholder */}
+        <ExerciseFigure exercise={ex} />
+
         {/* Overview: movement, difficulty, equipment, muscle targets */}
         <section className="panel" aria-label="Overview">
           <div className="chips">
@@ -300,7 +304,8 @@ export function ExerciseDetail() {
             style={pressedStyle(isFav, 'var(--warn)')}
             onClick={toggleFavourite}
           >
-            {isFav ? '★ Favourited' : '☆ Favourite'}
+            <StarIcon size={18} filled={isFav} />
+            {isFav ? 'Favourited' : 'Favourite'}
           </button>
           <button
             type="button"
@@ -309,7 +314,8 @@ export function ExerciseDetail() {
             style={pressedStyle(isPinned, 'var(--accent)')}
             onClick={togglePin}
           >
-            {isPinned ? '📌 Pinned to plans' : '📌 Pin to plans'}
+            <PinIcon size={18} />
+            {isPinned ? 'Pinned to plans' : 'Pin to plans'}
           </button>
         </div>
 
@@ -426,7 +432,8 @@ export function ExerciseDetail() {
               style={pressedStyle(liked, 'var(--good)')}
               onClick={() => writeFeedback({ liked: liked ? undefined : true })}
             >
-              👍 Liked
+              <ThumbUpIcon size={18} />
+              Liked
             </button>
             <button
               type="button"
@@ -435,7 +442,8 @@ export function ExerciseDetail() {
               style={pressedStyle(disliked, 'var(--danger)')}
               onClick={() => writeFeedback({ liked: disliked ? undefined : false })}
             >
-              👎 Dislike
+              <ThumbDownIcon size={18} />
+              Dislike
             </button>
             <button
               type="button"
@@ -444,7 +452,8 @@ export function ExerciseDetail() {
               style={pressedStyle(discomfort, 'var(--warn)')}
               onClick={() => writeFeedback({ discomfort: !discomfort })}
             >
-              ⚠ Discomfort
+              <WarnIcon size={18} />
+              Discomfort
             </button>
           </div>
           {discomfort ? (

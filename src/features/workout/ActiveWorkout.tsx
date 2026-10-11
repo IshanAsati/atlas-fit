@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../../data/store';
 import { putSession } from '../../data/db';
 import { Sheet, TopBar } from '../../design/ui';
+import { ExerciseFigure } from '../../design/ExerciseFigure';
 import { CheckIcon, ChevronRight, SwapIcon } from '../../design/icons';
 import { Bodygraph } from '../bodygraph/Bodygraph';
 import { formatElapsed } from './session';
@@ -378,6 +379,9 @@ export function ActiveWorkout() {
             </p>
 
             <div className="field" style={{ marginTop: 8 }}>
+              <div style={{ maxWidth: 280 }}>
+                <ExerciseFigure exercise={currentEx} />
+              </div>
               {currentEx.instructions.slice(0, 2).map((ins) => (
                 <p key={ins} className="small" style={{ margin: '2px 0' }}>
                   • {ins}

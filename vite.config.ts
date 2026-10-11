@@ -43,6 +43,17 @@ export default defineConfig({
               expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
+          {
+            // Display type (progressive enhancement — system fallback offline).
+            urlPattern: ({ url }) =>
+              url.origin === 'https://fonts.googleapis.com' ||
+              url.origin === 'https://fonts.gstatic.com',
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'atlas-fonts',
+              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
+          },
         ],
       },
     }),

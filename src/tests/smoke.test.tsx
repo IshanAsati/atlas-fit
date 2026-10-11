@@ -162,4 +162,25 @@ describe('screen smoke tests', () => {
     expect(screen.getByText('Body & progress')).toBeTruthy();
     expect(screen.getByText('Working sets (last 7 days)')).toBeTruthy();
   });
+
+  it('Exercise figure falls back honestly when the image fails', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    const { ExerciseFigure } = await import('../design/ExerciseFigure');
+    const ex = {
+      ...CATALOG.find((e) => e.id === 'push-up')!,
+      source: 'repdb' as const,
+      media: { start: 'http://127.0.0.1:9/missing.webp' },
+    };
+    const { container } = render(
+      <MemoryRouter>
+        <ExerciseFigure exercise={ex} />
+      </MemoryRouter>,
+    );
+    const img = container.querySelector('img');
+    expect(img).toBeTruthy();
+    fireEvent.error(img!);
+    expect(
+      container.querySelector('[role="img"]'),
+    ).toBeTruthy();
+  });
 });

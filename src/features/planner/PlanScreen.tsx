@@ -217,7 +217,7 @@ export function PlanScreen() {
                     {ex?.name ?? pe.exerciseId}
                     {profile?.pinned.includes(pe.exerciseId) ? (
                       <span className="small" style={{ marginLeft: 6, color: 'var(--accent)' }}>
-                        ★ pinned
+                        · Pinned
                       </span>
                     ) : null}
                   </span>

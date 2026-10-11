@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { equipmentLabel } from '../../data/equipment';
 import { MUSCLES } from '../../data/muscles';
 import { useStore } from '../../data/store';
-import { ChevronRight } from '../../design/icons';
+import { ChevronRight, StarIcon } from '../../design/icons';
+import { ExerciseFigure } from '../../design/ExerciseFigure';
 import { Credit, EmptyState, TopBar } from '../../design/ui';
 import type { LocationType, Movement, MuscleId } from '../../data/types';
 
@@ -258,7 +259,10 @@ export function Library() {
               aria-pressed={favouritesOnly}
               onClick={() => setFavouritesOnly((v) => !v)}
             >
-              ★ Favourites only
+              <span style={{ display: 'inline-flex', verticalAlign: '-4px', marginRight: 6 }}>
+                <StarIcon size={16} filled={favouritesOnly} />
+              </span>
+              Favourites only
             </button>
           </div>
         </section>
@@ -306,7 +310,7 @@ export function Library() {
                     style={{ borderBottom: 0 }}
                     onClick={() => navigate(`/exercises/${ex.id}`)}
                   >
-                    <span className="dot" aria-hidden="true" />
+                    <ExerciseFigure exercise={ex} size="thumb" />
                     <span className="grow" style={{ minWidth: 0 }}>
                       <span style={{ fontWeight: 650, display: 'block' }}>{ex.name}</span>
                       <span
@@ -330,7 +334,7 @@ export function Library() {
                     }
                     onClick={() => toggleFavourite(ex.id)}
                   >
-                    <span aria-hidden="true">{isFav ? '★' : '☆'}</span>
+                    <StarIcon size={20} filled={isFav} />
                   </button>
                 </div>
               );

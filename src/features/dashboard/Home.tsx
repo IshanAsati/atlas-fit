@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../data/store';
 import { Credit, EmptyState, Sheet, TopBar } from '../../design/ui';
-import { ChevronRight, PlayIcon, PlanIcon } from '../../design/icons';
+import { ChevronRight, GearIcon, PlayIcon, PlanIcon } from '../../design/icons';
 import { Bodygraph } from '../bodygraph/Bodygraph';
 import { buildSession } from '../workout/session';
 import { buildBackup, downloadBackup, inspectBackup, restoreBackup } from '../../data/backup';
@@ -129,7 +129,7 @@ export function Home() {
             onClick={() => setShowBackup(true)}
             aria-label="Backup and settings"
           >
-            ⚙
+            <GearIcon />
           </button>
         }
       />

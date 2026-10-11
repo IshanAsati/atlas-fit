@@ -70,10 +70,13 @@ body {
 }
 
 .topbar h1 {
-  font-size: 22px;
-  line-height: 1.2;
+  font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Segoe UI', sans-serif;
+  font-size: 24px;
+  line-height: 1.1;
   margin: 0;
-  letter-spacing: -0.3px;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
 }
 
 .topbar p {
@@ -90,12 +93,17 @@ body {
   gap: 14px;
 }
 
-/* Type scale */
+/* Type scale — display headings use Barlow Condensed (athletic) with a
+   system fallback so offline first paint never blocks on the webfont. */
 .h-hero {
-  font-size: 28px;
+  font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Segoe UI', sans-serif;
+  font-size: 32px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.2px;
+  line-height: 1.05;
   margin: 0;
+  text-transform: uppercase;
 }
 .h-sec {
   font-size: 17px;
@@ -132,9 +140,13 @@ body {
   color: var(--action);
 }
 .hero .title {
-  font-size: 22px;
+  font-family: 'Barlow Condensed', -apple-system, BlinkMacSystemFont, 'SF Pro Display',
+    'Segoe UI', sans-serif;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
+  line-height: 1.05;
+  text-transform: uppercase;
 }
 
 /* Generic panel — used sparingly */
@@ -570,8 +582,8 @@ textarea.input {
 .bodyfig .mg {
   cursor: pointer;
   transition: fill var(--ease), opacity var(--ease);
-  stroke: #2c2438;
-  stroke-width: 2;
+  stroke: #241f31;
+  stroke-width: 1.5;
 }
 .bodyfig .mg:focus-visible {
   outline: 2px solid var(--action);
@@ -607,6 +619,60 @@ textarea.input {
 .seg button[aria-pressed='true'] {
   background: var(--surface-2);
   color: var(--text);
+}
+
+/* Exercise illustrations */
+.figure {
+  background: #e9e7f2;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.figure img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.figure.placeholder {
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  background: var(--surface);
+}
+.figure.placeholder svg {
+  width: 88px;
+  height: 88px;
+}
+.thumb {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e9e7f2;
+  border: 1px solid var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumb.placeholder {
+  background: var(--surface);
+  padding: 8px;
+}
+.thumb.placeholder svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* Empty state */
