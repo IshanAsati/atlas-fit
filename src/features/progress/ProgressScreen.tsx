@@ -88,7 +88,7 @@ export function ProgressScreen({ onSelectExercise, onRepeatSession, onNavigateTa
   </div>;
 
   return <div className="progress-screen">
-    <header className="progress-header"><h1>Progress</h1><p>Your training, over time.</p></header>
+    <header className="progress-header"><h1>Progress</h1><p>Review your workouts, weights, and muscles trained.</p></header>
     <nav className="progress-navigation" aria-label="Progress views">
       {(['history', 'strength', 'muscles'] as const).map((tab) => <button key={tab} type="button"
         aria-pressed={view === tab} onClick={() => setView(tab)}>{tab.charAt(0).toUpperCase() + tab.slice(1)}</button>)}
@@ -125,14 +125,14 @@ export function ProgressScreen({ onSelectExercise, onRepeatSession, onNavigateTa
           </div>
           {selectedDay && <p className="progress-filter-date">{new Date(`${selectedDay}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>}
           {!visibleSessions.length ? selectedDay ? <div className="progress-empty"><h3>No completed workouts on this day</h3><p>Choose a marked day, or show all workouts.</p><button type="button" className="progress-action" onClick={() => setSelectedDay(null)}>Show all workouts</button></div>
-            : emptyState('Your history starts with a workout', 'Complete your first session to see it on the calendar, inspect your sets, and repeat a workout.')
+            : emptyState('No completed workouts yet', 'Finish a workout to see it here. You’ll be able to review your sets and repeat it anytime.')
             : <div className="progress-session-list">{visibleSessions.map((session) => {
               const isExpanded = expanded.includes(session.id);
               const duration = session.endedAt && session.endedAt > session.startedAt ? Math.round(Math.max(0, session.endedAt - session.startedAt - (session.pausedMs ?? 0)) / 60000) : null;
               return <article className="progress-session" key={session.id}>
                 <button type="button" className="progress-session-toggle" aria-expanded={isExpanded} aria-controls={`session-${session.id}`}
                   onClick={() => setExpanded(isExpanded ? expanded.filter((id) => id !== session.id) : [...expanded, session.id])}>
-                  <span><strong>{session.title || 'Workout'}</strong><small>{dateLabel(session.endedAt ?? session.startedAt)} · {sessionWorkingSetCount(session)} working sets{duration !== null ? ` · ${duration} min` : ''}</small></span>
+                  <span><strong>{session.title || 'Workout'}</strong><small>{dateLabel(session.endedAt ?? session.startedAt)} · {sessionWorkingSetCount(session)} working {sessionWorkingSetCount(session) === 1 ? 'set' : 'sets'}{duration !== null ? ` · ${duration} min` : ''}</small></span>
                   <Chevron direction={isExpanded ? 'up' : 'down'} />
                 </button>
                 {isExpanded && <div id={`session-${session.id}`} className="progress-session-detail">
@@ -152,7 +152,7 @@ export function ProgressScreen({ onSelectExercise, onRepeatSession, onNavigateTa
             })}</div>}
         </section>
         : <section className="progress-strength" aria-label="Exercise strength history">
-          {!exerciseIds.length ? emptyState('Strength comes from your logged sets', 'Complete working sets and record their load and reps. Your exercise history and recorded bests will appear here.') : <>
+          {!exerciseIds.length ? emptyState('See your strength over time', 'Log weights and reps, then complete your sets. Your exercise history and best sets will appear here.') : <>
             <label className="progress-field-label" htmlFor="strength-exercise">Exercise</label>
             <select className="progress-select" id="strength-exercise" value={selectedExerciseId} onChange={(event) => setExerciseId(event.target.value)}>
               {exerciseIds.map((id) => <option key={id} value={id}>{CATALOG_BY_ID[id]?.name ?? id}</option>)}
@@ -161,11 +161,11 @@ export function ProgressScreen({ onSelectExercise, onRepeatSession, onNavigateTa
               <h2>Recorded best</h2>
                {pr ? <><p className="progress-pr-value">{pr.loadKg > 0 ? `${displayLoad(pr.loadKg, unit)} ${unit}` : 'No added load'}<span> × {pr.reps} reps</span></p><p>{dateLabel(pr.timestamp)}</p></>
                 : <p>No complete load-and-rep record yet.</p>}
-              <p className="progress-definition">PR means your heaviest recorded completed working set, then your best reps at that same load. Not an estimated one-rep max. Warm-ups and skipped exercises do not count.</p>
+              <p className="progress-definition">Your heaviest completed working set. At the same weight, more reps wins. Warm-ups and skipped exercises don’t count; this isn’t an estimated one-rep max.</p>
             </section>
             {suggestion && <section className="progress-suggestion"><h3>Next-session suggestion</h3><p>{suggestion}</p></section>}
             <div className="progress-section-heading"><h2>Load & reps history</h2><span>{history.length} {history.length === 1 ? 'session' : 'sessions'}</span></div>
-            <p className="progress-definition">Every completed working set, newest session first. A missing load is not assumed to be bodyweight.</p>
+            <p className="progress-definition">Completed working sets, newest first. If the weight was left blank, it’s shown as not recorded, not assumed to be bodyweight.</p>
             <ol className="progress-strength-history">{history.map(({ session, sets }) => <li key={session.id}>
               <div className="progress-history-date"><strong>{dateLabel(session.endedAt ?? session.startedAt)}</strong><span>{session.title}</span></div>
                <ul>{sets.map((set, index) => <li key={index}><span>Set {index + 1}</span><strong>{formatSet(set, unit)}</strong></li>)}</ul>

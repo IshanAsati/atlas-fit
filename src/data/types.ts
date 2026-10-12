@@ -79,6 +79,11 @@ export interface UserProfile {
   onboarded: boolean;
   /** Display only; stored loads always remain kilograms. */
   weightUnit?: 'kg' | 'lb';
+  /** Muscles to emphasise without excluding the rest of the body. */
+  targetMuscles?: MuscleId[];
+  /** Equipment the user would rather not touch, even when it is available
+   *  (e.g. barbells, Smith machine). A hard constraint, including for pins. */
+  avoidEquipment?: string[];
 }
 
 export interface PlannedExercise {

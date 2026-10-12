@@ -23,9 +23,15 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'pullup-bar', label: 'Pull-up bar', category: 'Home · Gym' },
   { id: 'ab-wheel', label: 'Ab wheel', category: 'Home' },
   { id: 'suspension', label: 'Suspension trainer', category: 'Home · Travel' },
+  { id: 'sandbag', label: 'Sandbag', category: 'Home · Gym' },
+  { id: 'stability-ball', label: 'Stability / Swiss ball', category: 'Home · Gym' },
+  { id: 'bosu', label: 'BOSU ball', category: 'Home · Gym' },
+  { id: 'slam-ball', label: 'Medicine / slam ball', category: 'Home · Gym' },
+  { id: 'weight-vest', label: 'Weight vest', category: 'Home · Travel' },
   // Gym free weights
   { id: 'barbell', label: 'Barbell + plates', category: 'Gym · Free weights' },
   { id: 'squat-rack', label: 'Squat rack', category: 'Gym · Free weights' },
+  { id: 'trap-bar', label: 'Trap / hex bar', category: 'Gym · Free weights' },
   { id: 'ez-bar', label: 'EZ / curl bar', category: 'Gym · Free weights' },
   { id: 'preacher', label: 'Preacher bench', category: 'Gym · Free weights' },
   // Gym cables
@@ -44,14 +50,29 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'calf-raise', label: 'Calf raise machine', category: 'Gym · Lower' },
   { id: 'hip-thrust', label: 'Hip thrust / glute machine', category: 'Gym · Lower' },
   { id: 'adductor', label: 'Adductor / abductor machine', category: 'Gym · Lower' },
+  { id: 'smith-machine', label: 'Smith machine', category: 'Gym · Lower' },
+  { id: 'hack-squat', label: 'Hack squat machine', category: 'Gym · Lower' },
+  { id: 'ghd', label: 'Glute-ham developer (GHD)', category: 'Gym · Lower' },
+  { id: 'nordic-bench', label: 'Nordic curl bench', category: 'Gym · Lower' },
+  // Gym abs
+  { id: 'captains-chair', label: "Captain's chair / leg raise station", category: 'Gym · Abs' },
+  { id: 'decline-bench', label: 'Decline sit-up bench', category: 'Gym · Abs' },
+  { id: 'ab-crunch', label: 'Ab crunch machine', category: 'Gym · Abs' },
   // Gym other
   { id: 'assisted-pullup', label: 'Assisted pull-up machine', category: 'Gym · Other' },
   { id: 'back-extension', label: 'Back extension bench', category: 'Gym · Other' },
   { id: 'tbar-row', label: 'T-bar row', category: 'Gym · Other' },
+  { id: 'sled', label: 'Weight sled', category: 'Gym · Other' },
+  { id: 'landmine', label: 'Landmine anchor', category: 'Gym · Other' },
+  { id: 'plyo-box', label: 'Plyo box', category: 'Gym · Other' },
   // Cardio
   { id: 'treadmill', label: 'Treadmill', category: 'Cardio' },
   { id: 'rower', label: 'Rower', category: 'Cardio' },
   { id: 'cycle', label: 'Exercise cycle', category: 'Cardio' },
+  { id: 'battle-rope', label: 'Battle ropes', category: 'Cardio' },
+  { id: 'jump-rope', label: 'Jump rope', category: 'Cardio' },
+  // User-defined label only; no automatic exercise or equipment equivalence.
+  { id: 'sultan-pai', label: 'Sultan pai', category: 'Custom' },
 ];
 
 export const EQUIPMENT_BY_ID: Record<string, Equipment> = Object.fromEntries(

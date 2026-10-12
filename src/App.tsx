@@ -11,6 +11,7 @@ import { ExerciseDetailSheet } from './features/exercises/ExerciseDetailSheet';
 import { ExerciseLibraryScreen } from './features/exercises/ExerciseLibraryScreen';
 import { OnboardingScreen } from './features/onboarding/OnboardingScreen';
 import { Icon, type IconName } from './design/Icon';
+import { useThemePreference } from './design/theme';
 import { registerSW } from 'virtual:pwa-register';
 
 export type AppTab = 'home' | 'plan' | 'workout' | 'exercises' | 'muscles' | 'data';
@@ -34,6 +35,7 @@ export function App() {
   const [toast, setToast] = useState<string | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [updateReady, setUpdateReady] = useState(false);
+  const [themePreference, setThemePreference] = useThemePreference();
   const updateServiceWorker = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
   const starting = useRef(false);
   const scrollPositions = useRef<Partial<Record<AppTab,number>>>({});
@@ -97,7 +99,7 @@ export function App() {
 
   if (loading) return <div className="shell"><main className="view" aria-busy="true" style={{ paddingTop: 64 }}><div className="skeleton" style={{ height: 40, width: '65%' }} /><div className="skeleton" style={{ height: 260 }} /><p className="small" role="status">Opening your training log…</p></main></div>;
   if (error) return <div className="shell"><main className="view"><h1 className="h-hero">Your training log</h1><p role="alert" className="error-message">{error}</p><button className="btn primary" onClick={() => void refreshData()}>Retry</button></main></div>;
-  if (!profile?.onboarded || editingProfile) return <OnboardingScreen initialProfile={profile ?? undefined} onComplete={async () => { setEditingProfile(false); await refreshData(); navigate('home'); setToast('Your preferences and plan are saved.'); }} />;
+  if (!profile?.onboarded || editingProfile) return <OnboardingScreen initialProfile={profile ?? undefined} onCancel={editingProfile ? () => { setEditingProfile(false); navigate('data'); } : undefined} onComplete={async () => { setEditingProfile(false); await refreshData(); navigate('home'); setToast('Your preferences and plan are saved.'); }} />;
 
   return <div className={`shell ${activeSession && activeTab !== 'workout' ? 'has-resume' : ''}`}>
     {toast && <aside role="status" className="toast-alert">{toast}</aside>}
@@ -108,7 +110,7 @@ export function App() {
       {activeTab === 'workout' && <ActiveWorkoutScreen session={activeSession ?? undefined} onFinishSession={async () => { await refreshData(); navigate('home'); }} onExitSession={async () => { await refreshData(); navigate('home'); }} onSelectExercise={selectExercise} />}
       {activeTab === 'exercises' && <ExerciseLibraryScreen onSelectExercise={selectExercise} />}
       {activeTab === 'muscles' && <ProgressScreen onSelectExercise={selectExercise} onRepeatSession={repeatSession} onNavigateTab={navigate} />}
-      {activeTab === 'data' && <><header className="topbar row between"><h1>Settings</h1><button className="icon-btn" aria-label="Back to Today" onClick={() => navigate('home')}><Icon name="back" /></button></header><DataScreen onProfileUpdated={setProfile} onDataRestored={() => void refreshData()} /></>}
+      {activeTab === 'data' && <><header className="topbar row between"><h1>Settings</h1><button className="icon-btn" aria-label="Back to Today" onClick={() => navigate('home')}><Icon name="back" /></button></header><DataScreen onProfileUpdated={setProfile} onDataRestored={() => void refreshData()} themePreference={themePreference} onThemePreferenceChange={setThemePreference} /></>}
     </div>
     {activeTab !== 'workout' && <>
       {activeSession && <button className="resume-strip" onClick={() => navigate('workout')}><Icon name="play" /><span className="grow"><strong>Resume workout</strong><small>{activeSession.title}</small></span><Icon name="arrow" /></button>}

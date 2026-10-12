@@ -291,8 +291,8 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
     <div className="view" style={{ paddingBottom: 'calc(var(--tab-h, 72px) + 30px)' }}>
       {/* Screen Header */}
       <div style={{ marginBottom: 4 }}>
-        <h1 className="h-hero">Exercise Library</h1>
-        <p className="sub">Find your next movement. Learn how to make it count.</p>
+        <h1 className="h-hero">Exercise library</h1>
+        <p className="sub">Find an exercise and learn how to do it.</p>
       </div>
 
       <div className="seg" role="group" aria-label="Exercise catalogue source"><button type="button" aria-pressed={catalogueSource === 'local'} onClick={() => setCatalogueSource('local')}>Training library</button><button type="button" aria-pressed={catalogueSource === 'exercisedb'} onClick={() => setCatalogueSource('exercisedb')}>ExerciseDB</button></div>
@@ -306,7 +306,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
         <input
           type="search"
           className="ex-search-input"
-          placeholder="Search name, aliases, muscles, equipment..."
+          placeholder="Search exercises, muscles or equipment"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           aria-label="Search exercises"
@@ -335,7 +335,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
           <div className="ex-filter-label">
             <span>Location</span>
             {locationFilter !== 'all' && (
-              <span style={{ color: 'var(--action, #57B9FA)' }}>
+               <span style={{ color: 'var(--action-text)' }}>
                 {locationFilter.toUpperCase()}
               </span>
             )}
@@ -365,7 +365,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
           <div className="ex-filter-label">
             <span>Muscle Group</span>
             {selectedMuscleGroup !== 'all' && (
-              <span style={{ color: 'var(--accent, #BA83F7)' }}>
+              <span style={{ color: 'var(--action-text)' }}>
                 {MUSCLE_GROUPS.find((g) => g.id === selectedMuscleGroup)?.label}
               </span>
             )}
@@ -411,7 +411,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
             <select
               id="specific-muscle-select"
               className="input"
-              style={{ minHeight: 36, padding: '4px 8px', fontSize: 13, flex: 1 }}
+              style={{ minHeight: 44, padding: '8px', fontSize: 16, flex: 1 }}
               value={specificMuscle}
               onChange={(e) => {
                 const val = e.target.value as MuscleId | 'all';
@@ -437,7 +437,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
           <div className="ex-filter-label">
             <span>Movement Pattern</span>
             {movementFilter !== 'all' && (
-              <span style={{ color: 'var(--action, #57B9FA)' }}>
+              <span style={{ color: 'var(--action-text)' }}>
                 {MOVEMENT_PATTERNS.find((m) => m.id === movementFilter)?.label}
               </span>
             )}
@@ -508,7 +508,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
             </button>
           </div>
         </div>
-        <div className="field"><label htmlFor="equipment-filter">Exact equipment</label><select id="equipment-filter" className="input" value={equipmentFilter} onChange={(event) => setEquipmentFilter(event.target.value)}><option value="all">Any equipment</option>{EQUIPMENT.map((equipment) => <option key={equipment.id} value={equipment.id}>{equipment.label}</option>)}</select></div>
+        <div className="field"><label htmlFor="equipment-filter">Equipment</label><select id="equipment-filter" className="input" value={equipmentFilter} onChange={(event) => setEquipmentFilter(event.target.value)}><option value="all">Any equipment</option>{EQUIPMENT.map((equipment) => <option key={equipment.id} value={equipment.id}>{equipment.label}</option>)}</select></div>
         <div className="field"><label htmlFor="muscle-role-filter">Muscle involvement</label><select id="muscle-role-filter" className="input" value={muscleRole} onChange={(event) => setMuscleRole(event.target.value as typeof muscleRole)}><option value="any">Primary or secondary</option><option value="primary">Primary only</option><option value="secondary">Secondary only</option></select></div>
         <button type="button" className="btn primary block" onClick={() => setFiltersOpen(false)}>Show {filteredExercises.length} exercises</button>
       </div>
@@ -517,11 +517,11 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
       {/* Matching Count Header & Reset Filters Bar */}
       <div className="ex-count-bar">
         <span>
-          Showing <strong>{filteredExercises.length}</strong> of <strong>{CATALOG.length}</strong> exercises
+          <strong>{filteredExercises.length}</strong> {filteredExercises.length === 1 ? 'exercise' : 'exercises'} found
         </span>
         {hasActiveFilters && (
           <button type="button" className="ex-reset-btn" onClick={handleResetFilters}>
-            Reset Filters
+            Reset filters
           </button>
         )}
       </div>
@@ -595,7 +595,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
             <li>
             <button
               type="button" className="ex-load-more-btn" onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}>
-              Show More ({remainingCount} remaining)
+              Show more ({remainingCount} remaining)
             </button>
             </li>
           )}
@@ -605,13 +605,14 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
           <Icon name="search" size={32} />
           <strong>No matching exercises found</strong>
           <p style={{ margin: '6px 0 14px' }}>
-            Try adjusting your search keywords, location equipment, or muscle group filters.
+            Try a shorter search or clear your filters to see more exercises.
           </p>
           {hasActiveFilters && (
             <button type="button" className="btn small-btn primary" onClick={handleResetFilters}>
-              Clear All Filters
+               Clear filters
             </button>
           )}
+          {searchQuery && <button type="button" className="btn ghost small-btn" onClick={() => setSearchQuery('')}>Clear search</button>}
         </div>
       )}
 

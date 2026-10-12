@@ -17,9 +17,9 @@ describe('Today', () => {
   afterEach(() => { cleanup(); vi.restoreAllMocks(); });
   it('renders a useful next workout without fabricated metrics', async () => {
     render(<HomeScreen />);
-    expect(await screen.findByText('Hey, Ishan')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Today' })).toBeTruthy();
     expect(screen.getByText('Full body A')).toBeTruthy();
-    expect(screen.getByText(/Your story starts with one session/)).toBeTruthy();
+    expect(screen.getByText('No completed workouts yet')).toBeTruthy();
     expect(screen.queryByText(/Recovery/)).toBeNull();
     expect(storage.saveActiveWorkout).not.toHaveBeenCalled();
   });
@@ -32,7 +32,7 @@ describe('Today', () => {
   });
   it('does not regenerate plans or update profiles while browsing', async () => {
     const navigate = vi.fn(); render(<HomeScreen onNavigateTab={navigate} />);
-    fireEvent.click(await screen.findByText(/Change time, location or exercises/));
+    fireEvent.click(await screen.findByRole('button', { name: 'Adjust workout' }));
     expect(navigate).toHaveBeenCalledWith('plan');
     expect(storage.savePlan).not.toHaveBeenCalled();
     expect(storage.saveUserProfile).not.toHaveBeenCalled();
@@ -44,7 +44,7 @@ describe('Today', () => {
     ] };
     vi.spyOn(storage,'getWorkoutSessions').mockResolvedValue([session]);
     render(<HomeScreen />);
-    expect(await screen.findByText('1 working sets logged this week.')).toBeTruthy();
+    expect(await screen.findByText('1 working set logged this week.')).toBeTruthy();
   });
   it('resumes the real existing session', async () => {
     const session: WorkoutSession = { id: 'active', title: 'Existing session', location: 'home', state: 'active', startedAt: Date.now(), items: [] };
@@ -58,5 +58,29 @@ describe('Today', () => {
     await waitFor(() => expect(screen.getAllByRole('listitem')).toHaveLength(7));
     fireEvent.click(screen.getByRole('button',{ name: 'Open settings' }));
     expect(navigate).toHaveBeenCalledWith('data');
+  });
+  it('keeps the page header stable instead of inserting a long display name', async () => {
+    vi.mocked(storage.getUserProfile).mockResolvedValue({ ...storage.DEFAULT_PROFILE, displayName: 'A very long display name that should not crowd the header', onboarded: true });
+    const navigate = vi.fn();
+    render(<HomeScreen onNavigateTab={navigate} />);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Today' })).toBeTruthy();
+    expect(screen.queryByText(/Hey,/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Open settings' }));
+    expect(navigate).toHaveBeenCalledWith('data');
+  });
+  it('offers a real retry instead of a misleading start button when loading fails', async () => {
+    vi.mocked(storage.getUserProfile).mockRejectedValueOnce(new Error('Storage unavailable'));
+    render(<HomeScreen />);
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Start workout' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('button', { name: 'Start workout' })).toBeTruthy();
+  });
+  it('does not invent a duration for an active custom workout', async () => {
+    vi.mocked(storage.getActiveWorkout).mockResolvedValue({ id: 'custom', title: 'My workout', location: 'travel', startedAt: Date.now(), state: 'active', items: [{ exerciseId: 'push-up', sets: [] }] });
+    render(<HomeScreen />);
+    expect(await screen.findByText('Travel')).toBeTruthy();
+    expect(screen.getByText('1 exercise')).toBeTruthy();
+    expect(screen.queryByText(/About .* min/)).toBeNull();
   });
 });

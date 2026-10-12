@@ -4,10 +4,12 @@ import type {
   Goal,
   Experience,
   LocationType,
+  MuscleId,
   Plan,
 } from '../../data/types';
 import { EQUIPMENT, DEFAULT_EQUIPMENT } from '../../data/equipment';
 import { CATALOG, CATALOG_BY_ID } from '../../data/catalog';
+import { TrainingPreferences } from '../planner/TrainingPreferences';
 import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
 import { generatePlan } from '../planner/engine';
@@ -16,6 +18,7 @@ import * as db from '../../data/db';
 export interface OnboardingScreenProps {
   onComplete: () => void;
   initialProfile?: UserProfile;
+  onCancel?: () => void;
 }
 
 const GOAL_OPTIONS: Array<{
@@ -179,6 +182,7 @@ const OTHER_ACTIVITIES = [
 export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   onComplete,
   initialProfile,
+  onCancel,
 }) => {
   const [step, setStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -234,6 +238,17 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   const [discomfortNotes, setDiscomfortNotes] = useState<string>(
     initialProfile?.discomfortNotes || '',
   );
+  const [restrictions, setRestrictions] = useState<string[]>(
+    initialProfile?.restrictions ? [...initialProfile.restrictions] : [],
+  );
+
+  // Training preferences: muscle emphasis + avoidance (no defaults invented)
+  const [targetMuscles, setTargetMuscles] = useState<MuscleId[]>(
+    initialProfile?.targetMuscles ? [...initialProfile.targetMuscles] : [],
+  );
+  const [avoidEquipment, setAvoidEquipment] = useState<string[]>(
+    initialProfile?.avoidEquipment ? [...initialProfile.avoidEquipment] : [],
+  );
 
   // Other Sports
   const [selectedActivities, setSelectedActivities] = useState<string[]>(() => {
@@ -261,7 +276,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       daysPerWeek,
       durationMin,
       weekdays,
-      restrictions: initialProfile?.restrictions || [],
+      restrictions,
+      targetMuscles,
+      avoidEquipment,
       discomfortNotes: combinedDiscomfort,
       otherSports: sports,
       liked: initialProfile?.liked || [],
@@ -280,6 +297,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     daysPerWeek,
     durationMin,
     weekdays,
+    restrictions,
+    targetMuscles,
+    avoidEquipment,
     selectedDiscomfort,
     discomfortNotes,
     selectedActivities,
@@ -308,9 +328,10 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
   // Back button handler
   const handleBack = () => {
+    if (isSaving) return;
     if (step > 1) {
       setStep((s) => s - 1);
-    }
+    } else onCancel?.();
   };
 
   // Step 4 handler: Where do you train?
@@ -433,15 +454,16 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       {/* Sticky Progress Topbar */}
       <header className="topbar">
         <div className="row between" style={{ minHeight: 40, alignItems: 'center' }}>
-          {step > 1 ? (
+          {step > 1 || onCancel ? (
             <button
               type="button"
               className="btn small-btn ghost"
               onClick={handleBack}
               style={{ minHeight: 44, padding: '6px 12px' }}
-              aria-label="Back to previous step"
+              aria-label={step > 1 ? 'Back to previous step' : 'Back to Settings'}
+              disabled={isSaving}
             >
-              ← Back
+              <Icon name="back" size={18} /> Back
             </button>
           ) : (
             <span
@@ -449,7 +471,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 fontSize: 13,
                 fontWeight: 700,
                 letterSpacing: 0.8,
-                color: 'var(--action)',
+                color: 'var(--action-text)',
                 textTransform: 'uppercase',
               }}
             >
@@ -481,7 +503,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
             <div>
               <h1 className="h-hero">Welcome to Atlas Fit</h1>
               <p className="sub">
-                What should we call you? Keep it as Lifter or enter your preferred name.
+                Let’s set up a plan for your time, equipment, and experience. What should we call you?
               </p>
             </div>
 
@@ -498,7 +520,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 autoFocus
               />
               <span className="small" style={{ display: 'block', marginTop: 6 }}>
-                You can change this anytime. Your profile is stored strictly on this device.
+                Optional. You can change it later in Settings. No account needed.
               </span>
             </div>
 
@@ -539,7 +561,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   >
                     <span className="t" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       {item.title}
-                      {isSelected && <span style={{ color: 'var(--action)', fontSize: 16 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--action-text)', fontSize: 16 }}>✓</span>}
                     </span>
                     <span className="d">{item.description}</span>
                   </button>
@@ -581,7 +603,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   >
                     <span className="t" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       {item.title}
-                      {isSelected && <span style={{ color: 'var(--action)', fontSize: 16 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--action-text)', fontSize: 16 }}>✓</span>}
                     </span>
                     <span className="d">{item.description}</span>
                   </button>
@@ -623,7 +645,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   >
                     <span className="t" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       {item.title}
-                      {isSelected && <span style={{ color: 'var(--action)', fontSize: 16 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--action-text)', fontSize: 16 }}>✓</span>}
                     </span>
                     <span className="d">{item.description}</span>
                   </button>
@@ -685,7 +707,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               />
 
               <div className="chips" style={{ overflowX: 'auto', flexWrap: 'nowrap', paddingBottom: 4 }}>
-                {['All', 'Home', 'Free weights', 'Cables', 'Push', 'Lower', 'Other', 'Cardio'].map((cat) => (
+                {['All', 'Home', 'Free weights', 'Cables', 'Push', 'Lower', 'Abs', 'Other', 'Cardio', 'Custom'].map((cat) => (
                   <button
                     key={cat}
                     type="button"
@@ -806,7 +828,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   >
                     <span className="t" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       {item.title}
-                      {isSelected && <span style={{ color: 'var(--action)', fontSize: 16 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--action-text)', fontSize: 16 }}>✓</span>}
                     </span>
                     <span className="d">{item.description}</span>
                   </button>
@@ -848,7 +870,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   >
                     <span className="t" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       {item.title}
-                      {isSelected && <span style={{ color: 'var(--action)', fontSize: 16 }}>✓</span>}
+                      {isSelected && <span style={{ color: 'var(--action-text)', fontSize: 16 }}>✓</span>}
                     </span>
                     <span className="d">{item.description}</span>
                   </button>
@@ -925,7 +947,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
             <div>
               <h1 className="h-hero">Movement Comfort</h1>
               <p className="sub">
-                Any movements causing discomfort, or joints advised to protect? We will safely exclude or substitute them.
+                Any movements causing discomfort, or joints advised to protect? Atlas Fit filters matching exercises out of your plan.
               </p>
             </div>
 
@@ -966,6 +988,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 Atlas Fit filters out exercises matching your notes without making medical claims.
               </span>
             </div>
+
+            <TrainingPreferences
+              value={{ targetMuscles, avoidEquipment, restrictions }}
+              onChange={(next) => {
+                setTargetMuscles(next.targetMuscles);
+                setAvoidEquipment(next.avoidEquipment);
+                setRestrictions(next.restrictions);
+              }}
+            />
 
             <div className="row" style={{ marginTop: 8, gap: 10 }}>
               <button
@@ -1049,7 +1080,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                 onClick={() => setShowExplanation((prev) => !prev)}
               >
                 <div className="row" style={{ gap: 8 }}>
-                  <span style={{ color: 'var(--action)', fontWeight: 700, fontSize: 13.5 }}>
+                  <span style={{ color: 'var(--action-text)', fontWeight: 700, fontSize: 13.5 }}>
                     WHY THIS PLAN?
                   </span>
                   <span className="small">({generatedPlan.explanation.length} rules decisions)</span>
@@ -1123,7 +1154,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                             <div style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--text)' }}>
                               {ex?.name ?? plannedEx.exerciseId}
                             </div>
-                            <div className="small" style={{ color: 'var(--action)', marginTop: 2 }}>
+                            <div className="small" style={{ color: 'var(--action-text)', marginTop: 2 }}>
                               {plannedEx.sets} sets × {plannedEx.reps} · {plannedEx.restSec}s rest
                             </div>
                             {plannedEx.reason && (
@@ -1162,6 +1193,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
             </div>
           </div>
         )}
+        {step > 1 && <button type="button" className="btn ghost block" aria-label="Go back one step" disabled={isSaving} onClick={handleBack}><Icon name="back" size={18} /> Back</button>}
       </main>
     </div>
   );

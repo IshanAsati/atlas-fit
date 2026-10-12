@@ -59,7 +59,7 @@ describe('ExerciseLibraryScreen', () => {
 
     // Screen title and subtitle
     expect(screen.getByRole('heading', { name: /Exercise Library/i })).toBeTruthy();
-    expect(screen.getByPlaceholderText(/Search name, aliases, muscles, equipment.../i)).toBeTruthy();
+    expect(screen.getByRole('searchbox', { name: 'Search exercises' })).toBeTruthy();
 
     // Attribution
     const attribution = screen.getByText(/RepDB \(repdb\.co\)/i);
@@ -70,14 +70,14 @@ describe('ExerciseLibraryScreen', () => {
     await waitFor(() => {
       const countBar = document.querySelector('.ex-count-bar');
       expect(countBar).toBeTruthy();
-      expect(countBar?.textContent).toContain(`Showing ${CATALOG.length} of ${CATALOG.length} exercises`);
+      expect(countBar?.textContent).toContain(`${CATALOG.length} exercises found`);
     });
   });
 
   it('performs instant fast search matching exercise name, muscle and equipment', async () => {
     render(<ExerciseLibraryScreen />);
 
-    const searchInput = screen.getByPlaceholderText(/Search name, aliases, muscles, equipment.../i);
+    const searchInput = screen.getByRole('searchbox', { name: 'Search exercises' });
 
     // Search by name
     fireEvent.change(searchInput, { target: { value: 'Push-up' } });
@@ -111,6 +111,16 @@ describe('ExerciseLibraryScreen', () => {
     await waitFor(() => {
       expect(squatChip.getAttribute('class')).not.toContain('active');
     });
+  });
+
+  it('offers a clear-search action when there are no results', async () => {
+    render(<ExerciseLibraryScreen />);
+    const input = screen.getByRole('searchbox', { name: 'Search exercises' });
+    fireEvent.change(input, { target: { value: 'zzzznotanexercise' } });
+    await screen.findByText('No matching exercises found');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear search' })[1]);
+    expect((input as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText('No matching exercises found')).toBeNull();
   });
 
   it('filters exercises by muscle group and difficulty', async () => {

@@ -78,6 +78,8 @@ function cloneProfile(profile: UserProfile): UserProfile {
     disliked: [...(profile.disliked ?? [])],
     pinned: [...(profile.pinned ?? [])],
     favourites: [...(profile.favourites ?? [])],
+    targetMuscles: [...(profile.targetMuscles ?? [])],
+    avoidEquipment: [...(profile.avoidEquipment ?? [])],
   };
 }
 

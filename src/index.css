@@ -2,7 +2,7 @@
 
 @media (min-width: 520px) {
   body {
-    background: #0b120e;
+    background: var(--outer-bg);
   }
   .shell {
     border-inline: 1px solid var(--hairline);

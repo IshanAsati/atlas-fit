@@ -90,7 +90,8 @@ export const UPPER_LOWER_4_DAY: SplitDef = {
       id: 'day-1',
       label: 'Upper A',
       focus: 'Upper Body',
-      movementTargets: ['hpush', 'hpull', 'vpush', 'accessory', 'core', 'accessory'],
+      // Two push + two pull patterns so the week's push/pull volume balances.
+      movementTargets: ['hpush', 'hpull', 'vpush', 'vpull', 'core', 'accessory'],
     },
     {
       id: 'day-2',
@@ -102,7 +103,8 @@ export const UPPER_LOWER_4_DAY: SplitDef = {
       id: 'day-3',
       label: 'Upper B',
       focus: 'Upper Body',
-      movementTargets: ['vpush', 'vpull', 'hpush', 'accessory', 'core', 'accessory'],
+      // Same push/pull counts as Upper A, lead with the vertical patterns.
+      movementTargets: ['vpush', 'vpull', 'hpush', 'hpull', 'accessory', 'core'],
     },
     {
       id: 'day-4',

@@ -58,7 +58,7 @@ export function ExerciseDbBrowser() {
   };
   const entries = page?.entries ?? saved;
   return <>
-    <p className="banner">ExerciseDB Free is an optional online source for personal, non-commercial use. API entries are browse-only until their equipment, difficulty, and muscle mapping are reviewed. Searching sends the exercise name—not your workout log—to ExerciseDB.</p>
+    <div className="banner"><strong>Explore more exercises online</strong><p className="sub">ExerciseDB entries are for browsing only; they aren’t added to your training plan.</p><details className="ex-source-info"><summary>Privacy and usage</summary><p>For personal, non-commercial use. Search sends your query to ExerciseDB, not your workout log. These exercises haven’t been reviewed for equipment, difficulty, or muscle targets.</p></details></div>
     <form className="row" onSubmit={(event) => void search(event)}><div className="field grow"><label htmlFor="exercisedb-query">ExerciseDB search</label><input id="exercisedb-query" type="search" className="input" value={query} placeholder="e.g. barbell bench press" onChange={(event) => { controller.current?.abort(); ++requestVersion.current; setBusy(false); setQuery(event.target.value); setPage(null); setError(null); }} /></div><button className="btn primary" disabled={busy || !query.trim()} style={{ alignSelf: 'flex-end' }}><Icon name="search" size={18} />{busy ? 'Searching…' : 'Search'}</button></form>
     <div className="row between"><h2 className="h-sec">{page ? `${page.total} matches` : 'Saved for offline'}</h2>{page && <button className="btn ghost small-btn" onClick={() => { setPage(null); setError(null); }}>Saved library</button>}</div>
     {error && <p className="error-message" role="alert">{error}</p>}
@@ -67,7 +67,7 @@ export function ExerciseDbBrowser() {
     {page?.nextCursor && <button className="btn ghost block" disabled={busy} onClick={() => void search(undefined,page.nextCursor ?? undefined)}>Load next 12 results</button>}
     <footer className="credit">ExerciseDB data and media by <a href="https://ascendapi.com" target="_blank" rel="noopener noreferrer">AscendAPI</a>. <a href="https://oss.exercisedb.dev/docs" target="_blank" rel="noopener noreferrer">Free API terms and documentation</a>. Some upstream demonstrations may be unavailable. Saved ExerciseDB entries stay in this browser and are not included in training backups.</footer>
     <Modal open={Boolean(selected)} title={selected?.name ?? 'ExerciseDB exercise'} onClose={() => { if (!saving) { setSelected(null); setPlaying(false); } }}>{selected && <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <p className="small">ExerciseDB · unreviewed catalogue entry · personal use only</p>
+      <p className="small">ExerciseDB · not reviewed by Atlas Fit · personal use only</p>
       {selected.gifUrl && <><button className="btn ghost block" disabled={saving} onClick={() => setPlaying(!playing)}><Icon name="play" />{playing ? 'Stop demonstration' : 'Play 180p demonstration'}</button>{playing && <div className="exercise-picture large">{imageFailed ? <span className="media-unavailable">Demonstration unavailable. Use the written steps below.</span> : <img src={selected.gifUrl} alt={`${selected.name} exercise demonstration`} onError={() => setImageFailed(true)} />}</div>}</>}
       <button className="btn primary block" disabled={saving} onClick={() => void save()}><Icon name="download" />{saving ? 'Saving…' : 'Save for offline browsing'}</button>
       {status && <p className="banner" role="status">{status}</p>}

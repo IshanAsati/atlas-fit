@@ -62,12 +62,36 @@ describe('ActiveWorkoutScreen', () => {
   it('renders exercise targets and accessible set fields', async () => {
     await open();
     expect(screen.getByText('Upper Body Power')).toBeDefined();
-    expect(screen.getByText('gym')).toBeDefined();
+    expect(screen.getByText('Gym')).toBeDefined();
     expect(screen.getByText('Push-up')).toBeDefined();
     expect(screen.getByText(/2 sets × 8-10/)).toBeDefined();
     expect(screen.getByText('Chest')).toBeDefined();
     expect(screen.getByLabelText('Push-up set 1 load kg')).toBeDefined();
     expect(screen.getByLabelText('Push-up set 2 reps')).toBeDefined();
+  });
+
+  it('uses readable movement names while preserving the filter ids', async () => {
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    expect(screen.getByRole('option', { name: 'Horizontal push' }).getAttribute('value')).toBe('hpush');
+    fireEvent.change(screen.getByLabelText('Movement'), { target: { value: 'hpush' } });
+    expect((screen.getByLabelText('Movement') as HTMLSelectElement).value).toBe('hpush');
+    expect(screen.queryByRole('option', { name: 'hpush' })).toBeNull();
+  });
+
+  it('excludes avoided equipment from add-exercise suggestions', async () => {
+    vi.mocked(db.getUserProfile).mockResolvedValue({ ...db.DEFAULT_PROFILE, avoidEquipment: ['barbell', 'smith-machine'] });
+    const base = catalog.CATALOG_BY_ID['push-up'];
+    vi.spyOn(catalog, 'searchExercises').mockReturnValue([
+      { ...base, id: 'allowed', name: 'Allowed dumbbell movement', equipmentIds: ['dumbbells'] },
+      { ...base, id: 'barred', name: 'Avoided barbell movement', equipmentIds: ['barbell'] },
+      { ...base, id: 'smith', name: 'Avoided Smith movement', equipmentIds: ['smith-machine'] },
+    ]);
+    await open();
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    expect(screen.getByRole('button', { name: /Allowed dumbbell movement/ })).toBeDefined();
+    expect(screen.queryByRole('button', { name: /Avoided barbell movement/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Avoided Smith movement/ })).toBeNull();
   });
 
   it('defaults to a single focused exercise and provides overview navigation', async () => {
@@ -134,10 +158,10 @@ describe('ActiveWorkoutScreen', () => {
 
   it('adds empty unmarked sets and removes the final set', async () => {
     await open();
-    fireEvent.click(screen.getByText('+ Add Set'));
+    fireEvent.click(screen.getByText('Add set'));
     expect((screen.getByLabelText('Push-up set 3 load kg') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Push-up set 3 reps') as HTMLInputElement).value).toBe('');
-    fireEvent.click(screen.getByText('- Remove Set'));
+    fireEvent.click(screen.getByText('Remove last set'));
     expect(screen.queryByLabelText('Push-up set 3 reps')).toBeNull();
   });
 
@@ -184,8 +208,8 @@ describe('ActiveWorkoutScreen', () => {
     await waitFor(() => expect(release).toBeDefined());
     fireEvent.change(screen.getByLabelText('Push-up set 1 reps'), { target: { value: '8' } });
     expect(db.saveActiveWorkout).toHaveBeenCalledTimes(2); // initial save and first edit only
-    fireEvent.click(screen.getByText('Finish Workout'));
-    fireEvent.click(screen.getByText('Save & Finish Session'));
+    fireEvent.click(screen.getByText('Finish workout'));
+    fireEvent.click(screen.getByText('Save workout'));
     expect(db.finishSession).not.toHaveBeenCalled();
     await act(async () => { release(); });
     await screen.findByText('Workout saved');
@@ -211,11 +235,11 @@ describe('ActiveWorkoutScreen', () => {
     const { onExit } = await open();
     await screen.findByText('Saved on device');
     vi.mocked(db.saveActiveWorkout).mockRejectedValueOnce(new Error('disk failure'));
-    fireEvent.click(screen.getByText('Pause / Exit'));
+    fireEvent.click(screen.getByText('Save & exit'));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('before leaving'));
     expect(onExit).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Resume workout timer' })).toBeDefined();
-    fireEvent.click(screen.getByText('Pause / Exit'));
+    fireEvent.click(screen.getByText('Save & exit'));
     await waitFor(() => expect(onExit).toHaveBeenCalledOnce());
   });
 
@@ -255,8 +279,8 @@ describe('ActiveWorkoutScreen', () => {
   it('shows actual completion and saves a routine before returning to training', async () => {
     const { onFinish } = await open();
     fireEvent.click(screen.getAllByTitle('Mark set done')[0]);
-    fireEvent.click(screen.getByText('Finish Workout'));
-    fireEvent.click(screen.getByText('Save & Finish Session'));
+    fireEvent.click(screen.getByText('Finish workout'));
+    fireEvent.click(screen.getByText('Save workout'));
     await screen.findByText('Workout saved');
     expect(screen.getByText(/Working set 1: 20 kg × 10/)).toBeDefined();
     expect(screen.getByText('Unfinished sets left unmarked.')).toBeDefined();
@@ -265,19 +289,19 @@ describe('ActiveWorkoutScreen', () => {
     fireEvent.click(screen.getByText('Save as routine'));
     await screen.findByText('Routine saved');
     expect(training.saveRoutineFromSession).toHaveBeenCalledWith(expect.objectContaining({ state: 'done' }), 'My push day');
-    fireEvent.click(screen.getByText('Done · Back to training'));
+    fireEvent.click(screen.getByText('Back to Today'));
     expect(onFinish).toHaveBeenCalledOnce();
   });
 
   it('does not clear a session or call finish when history saving fails', async () => {
     vi.mocked(db.finishSession).mockRejectedValueOnce(new Error('disk failure'));
     const { onFinish } = await open();
-    fireEvent.click(screen.getByText('Finish Workout'));
-    fireEvent.click(screen.getByText('Save & Finish Session'));
+    fireEvent.click(screen.getByText('Finish workout'));
+    fireEvent.click(screen.getByText('Save workout'));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('Workout could not be finished'));
     expect(db.clearActiveWorkout).not.toHaveBeenCalled();
     expect(onFinish).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByText('Save & Finish Session'));
+    fireEvent.click(screen.getByText('Save workout'));
     await screen.findByText('Workout saved');
   });
 });

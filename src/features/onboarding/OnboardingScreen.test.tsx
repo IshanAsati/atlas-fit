@@ -62,6 +62,27 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('Step 1 of 11')).toBeTruthy();
   });
 
+  it('offers a bottom Back button and preserves answers when going back', () => {
+    render(<OnboardingScreen onComplete={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Alex' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    fireEvent.click(screen.getByRole('button', { name: /Mobility & Functional/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Go back one step' }));
+    expect((screen.getByLabelText(/Display Name/i) as HTMLInputElement).value).toBe('Alex');
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('button', { name: /Mobility & Functional/i }).getAttribute('aria-pressed')).toBe('true');
+    expect(saveUserProfileSpy).not.toHaveBeenCalled();
+  });
+
+  it('can leave preference editing from the first step without saving', () => {
+    const cancel = vi.fn();
+    render(<OnboardingScreen initialProfile={{ ...db.DEFAULT_PROFILE, onboarded: true }} onComplete={vi.fn()} onCancel={cancel} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Settings' }));
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(saveUserProfileSpy).not.toHaveBeenCalled();
+    expect(savePlanSpy).not.toHaveBeenCalled();
+  });
+
   it('progresses through all 11 steps and saves profile and plan on completion', async () => {
     const onComplete = vi.fn();
     render(<OnboardingScreen onComplete={onComplete} />);
@@ -94,6 +115,10 @@ describe('OnboardingScreen', () => {
     const gymTab = screen.getByRole('tab', { name: /Gym Gear/i });
     fireEvent.click(gymTab);
     expect(gymTab.getAttribute('aria-selected')).toBe('true');
+    const customEquipment = screen.getByRole('button', { name: /Sultan pai/i });
+    expect(customEquipment.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(customEquipment);
+    expect(customEquipment.getAttribute('aria-pressed')).toBe('true');
 
     // Search equipment
     const searchInput = screen.getByPlaceholderText(/Search equipment/i);
@@ -162,6 +187,7 @@ describe('OnboardingScreen', () => {
     expect(savedProfile.durationMin).toBe(45);
     expect(savedProfile.otherSports).toContain('Running');
     expect(savedProfile.discomfortNotes).toContain('Overhead pressing');
+    expect(savedProfile.equipment.gym).toContain('sultan-pai');
   });
 
   it('supports skipping the movement comfort step on Step 9', async () => {

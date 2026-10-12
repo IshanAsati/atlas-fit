@@ -36,6 +36,9 @@ with sync_playwright() as p:
         snapshot('mobile-' + name)
         page.set_viewport_size({'width':1440,'height':1000})
         snapshot('desktop-' + name)
+        for width in [320, 375, 768]:
+            page.set_viewport_size({'width':width,'height':900})
+            assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), name + f' overflow at {width}'
         page.set_viewport_size({'width':390,'height':844})
 
     def tab(name):
@@ -56,13 +59,16 @@ with sync_playwright() as p:
     page.get_by_role('button', name='Skip (No Restrictions)').click()
     page.get_by_role('button', name='Generate Plan Preview').click()
     page.get_by_role('button', name='Start Training').click()
-    expect(page.get_by_role('heading', name='Hey, Test Lifter')).to_be_visible()
+    expect(page.get_by_role('heading', name='Today', exact=True)).to_be_visible()
     assert rows('activeWorkout') == [], 'Onboarding silently started a workout'
     assert rows('sessions') == [], 'Onboarding silently wrote a session'
     checks.append('Onboarding creates preferences and plan, never an active session')
     both('today')
-    page.get_by_role('button', name='Save images for offline use').click()
-    expect(page.get_by_text(re.compile(r'illustrations saved for offline use'))).to_be_visible()
+    page.get_by_role('button', name='Save offline images').click()
+    # A reviewed exercise can legitimately have written instructions but no
+    # licensed image. Require an honest pack result; the decoded start/end
+    # images for the logged exercise are still asserted strictly below.
+    expect(page.get_by_text(re.compile(r'\d+ images saved(?: for offline use|; \d+ unavailable)'))).to_be_visible()
     page.evaluate('navigator.serviceWorker.ready')
     page.reload(wait_until='networkidle')
     page.wait_for_function('navigator.serviceWorker.controller !== null')
@@ -99,8 +105,8 @@ with sync_playwright() as p:
     toolbar = page.locator('.action-toolbar').bounding_box()
     assert pending and toolbar and pending['y'] + pending['height'] < toolbar['y'], 'Incomplete set is below toolbar on first viewport'
     both('workout')
-    page.get_by_role('button', name='Pause / Exit', exact=True).click()
-    expect(page.get_by_role('heading', name='Hey, Test Lifter')).to_be_visible()
+    page.get_by_role('button', name='Save & exit', exact=True).click()
+    expect(page.get_by_role('heading', name='Today', exact=True)).to_be_visible()
     assert rows('activeWorkout')[0]['session']['pausedAt'] > 0
     page.reload(wait_until='networkidle')
     page.get_by_role('button', name='Resume workout', exact=True).first.click()
@@ -118,16 +124,23 @@ with sync_playwright() as p:
     assert images.count() > 0, 'Offline exercise illustration is missing'
     for image in images.all():
         expect(image).to_be_visible()
+        expect(image).to_have_js_property('complete', True)
+        expect(image).not_to_have_js_property('naturalWidth', 0)
         assert image.evaluate('(img)=>img.complete && img.naturalWidth>0'), 'Offline image failed to decode'
     page.get_by_role('button', name='End position', exact=True).click()
-    expect(page.get_by_alt_text(f'{name}, end position', exact=True)).to_be_visible()
-    assert page.get_by_alt_text(f'{name}, end position', exact=True).evaluate('(img)=>img.complete && img.naturalWidth>0')
+    end_image = page.get_by_alt_text(f'{name}, end position', exact=True)
+    expect(end_image).to_be_visible()
+    # Changing src can leave a visible image waiting for cached bytes to
+    # decode. Retry the same strict assertion instead of racing that decode.
+    expect(end_image).to_have_js_property('complete', True)
+    expect(end_image).not_to_have_js_property('naturalWidth', 0)
+    assert end_image.evaluate('(img)=>img.complete && img.naturalWidth>0')
     page.evaluate('document.fonts.ready')
     assert page.evaluate('document.fonts.check("700 20px \'Source Sans 3\'")'), 'Offline heading font unavailable'
     page.get_by_text('Illustrations & form guidance', exact=True).click()
-    page.get_by_role('button', name='Finish Workout', exact=True).click()
+    page.get_by_role('button', name='Finish workout', exact=True).click()
     expect(page.get_by_role('dialog', name='Finish workout')).to_be_visible()
-    page.get_by_role('button', name='Save & Finish Session', exact=True).click()
+    page.get_by_role('button', name='Save workout', exact=True).click()
     expect(page.get_by_role('heading', name='Workout saved')).to_be_visible()
     assert rows('activeWorkout') == []
     done = [row for row in rows('sessions') if row['id'] == session_id][0]
@@ -137,8 +150,8 @@ with sync_playwright() as p:
     page.get_by_label('Routine name', exact=True).fill('Training smoke routine')
     page.get_by_role('button', name='Save as routine', exact=True).click()
     expect(page.get_by_role('button', name='Routine saved', exact=True)).to_be_visible()
-    page.get_by_role('button', name='Done · Back to training', exact=True).click()
-    expect(page.get_by_role('heading', name='Hey, Test Lifter')).to_be_visible()
+    page.get_by_role('button', name='Back to Today', exact=True).click()
+    expect(page.get_by_role('heading', name='Today', exact=True)).to_be_visible()
     checks.append('Production app reloads and finishes offline; finished session cannot be resurrected')
     context.set_offline(False)
 
@@ -146,7 +159,7 @@ with sync_playwright() as p:
     expect(page.locator('.progress-session-toggle')).to_have_count(1)
     page.locator('.progress-session-toggle').click()
     expect(page.get_by_text('excluded from working sets', exact=False)).to_be_visible()
-    expect(page.locator('.progress-session-toggle')).to_contain_text('1 working sets')
+    expect(page.locator('.progress-session-toggle')).to_contain_text('1 working set')
     both('history')
     page.get_by_role('button', name='Strength', exact=True).click()
     expect(page.get_by_text('44.09 lb', exact=False).first).to_be_visible()
@@ -179,17 +192,25 @@ with sync_playwright() as p:
     expect(page.get_by_text('Routine saved on this device.', exact=True)).to_be_visible()
     both('routines')
     page.get_by_role('button', name='Close editor', exact=True).click()
+    page.get_by_role('button', name='Create custom workout', exact=True).click()
+    expect(page.get_by_role('heading', name='Create custom workout', exact=True)).to_be_visible()
+    expect(page.get_by_text('No saved routines yet', exact=True)).to_have_count(0)
+    page.get_by_label('Routine name', exact=True).fill('My home workout with a longer name')
+    expect(page.get_by_role('button', name='Save routine', exact=True)).to_be_disabled()
+    both('custom-workout')
+    page.once('dialog', lambda dialog: dialog.accept())
+    page.get_by_role('button', name='Close editor', exact=True).click()
     page.get_by_role('button', name='Start Edited training routine', exact=True).click()
     expect(page.locator('.active-title')).to_have_text('Edited training routine')
     repeat = rows('activeWorkout')[0]['session']
     assert all(not s['done'] and s['reps'] is None and s['loadKg'] is None for i in repeat['items'] for s in i['sets'])
-    page.get_by_role('button', name='Pause / Exit', exact=True).click()
+    page.get_by_role('button', name='Save & exit', exact=True).click()
     tab('Plan')
     page.get_by_role('button', name='Saved routines (1)', exact=True).click()
     page.get_by_role('button', name='Resume workout instead of Edited training routine', exact=True).click()
     expect(page.locator('.active-title')).to_have_text('Edited training routine')
     assert rows('activeWorkout')[0]['session']['id'] == repeat['id']
-    page.get_by_role('button', name='Pause / Exit', exact=True).click()
+    page.get_by_role('button', name='Save & exit', exact=True).click()
     checks.append('Plan previews are read-only; routines edit, start empty, and protect unfinished sessions')
 
     tab('Library')

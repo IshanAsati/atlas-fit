@@ -1150,6 +1150,462 @@ export const CURATED_EXERCISES: Exercise[] = [
     mistakes: ['Arching the lower back', 'Pressing an unstable bag', 'Forcing painful shoulder range'],
     substitutes: ['pike-push-up', 'db-shoulder-press', 'band-pull-apart'],
   },
+  {
+    id: 'russian-twist',
+    name: 'Russian Twist',
+    aliases: ['russian twist', 'seated trunk twist'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['obliques'],
+    secondary: ['abs'],
+    instructions: [
+      'Sit with knees bent, heels lightly touching the floor, torso leaned back about 45 degrees.',
+      'Rotate your torso to one side, then the other, keeping hips still.',
+      'Repeat side to side for reps. Hold a light weight only once the motion is clean.',
+    ],
+    cues: ['Turn from the ribs, not the arms', 'Chest stays tall'],
+    mistakes: ['Waving the arms without rotating', 'Rounding the lower back'],
+    substitutes: ['heel-tap', 'bicycle-crunch', 'side-plank'],
+  },
+  {
+    id: 'bicycle-crunch',
+    name: 'Bicycle Crunch',
+    aliases: ['air bike crunch', 'alternating crunch'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['obliques'],
+    secondary: ['abs'],
+    instructions: [
+      'Lie on your back with hands lightly behind your head and legs raised.',
+      'Bring one knee in while rotating the opposite elbow toward it, extending the other leg.',
+      'Alternate sides smoothly without pulling on your neck.',
+    ],
+    cues: ['Slow and controlled beats fast', 'Elbow to knee, not knee to elbow'],
+    mistakes: ['Yanking the neck', 'Rushing so hips rock'],
+    substitutes: ['russian-twist', 'heel-tap', 'v-up'],
+  },
+  {
+    id: 'heel-tap',
+    name: 'Heel Tap',
+    aliases: ['heel touches', 'penguin crunch'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['obliques'],
+    secondary: ['abs'],
+    instructions: [
+      'Lie on your back with knees bent, feet flat, shoulders lifted slightly off the floor.',
+      'Reach one hand toward the same-side heel, side-bending at the ribs.',
+      'Alternate sides in a steady rhythm without lowering your shoulders.',
+    ],
+    cues: ['Keep shoulders off the floor', 'Small side bends, not big swings'],
+    mistakes: ['Pulling on the neck', 'Lifting shoulders then dropping them each rep'],
+    substitutes: ['russian-twist', 'bicycle-crunch', 'side-plank'],
+  },
+  {
+    id: 'flutter-kick',
+    name: 'Flutter Kick',
+    aliases: ['flutter kicks'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['abs'],
+    secondary: ['quads'],
+    instructions: [
+      'Lie on your back with hands under your hips and legs straight.',
+      'Lift both legs a few inches off the floor and kick them up and down in small motions.',
+      'Keep your lower back pressed into the floor the whole set.',
+    ],
+    cues: ['Small fast kicks from the hips', 'Back stays glued down'],
+    mistakes: ['Legs too high so the core disengages', 'Lower back arching off the floor'],
+    substitutes: ['heel-tap', 'lying-leg-raise', 'dead-bug'],
+  },
+  {
+    id: 'mountain-climber',
+    name: 'Mountain Climber',
+    aliases: ['mountain climbers'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['abs'],
+    secondary: ['obliques', 'quads'],
+    instructions: [
+      'Start in a push-up position with hands under shoulders and body in one line.',
+      'Drive one knee toward your chest without letting hips rise or sag.',
+      'Switch legs in a smooth running rhythm while keeping the trunk braced.',
+    ],
+    cues: ['Hips stay level with shoulders', 'Light, quick feet'],
+    mistakes: ['Bouncing the hips up and down', 'Hands too far forward'],
+    substitutes: ['plank', 'flutter-kick', 'v-up'],
+  },
+  {
+    id: 'v-up',
+    name: 'V-Up',
+    aliases: ['v ups', 'jackknife sit-up'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 2,
+    primary: ['abs'],
+    secondary: ['obliques', 'quads'],
+    instructions: [
+      'Lie flat with arms overhead and legs straight.',
+      'Lift torso and legs at the same time, reaching hands toward toes.',
+      'Lower both back down with control without slamming.',
+    ],
+    cues: ['Fold at the hips', 'Control the way down'],
+    mistakes: ['Swinging the arms for momentum', 'Bending knees so much it becomes a tuck'],
+    substitutes: ['lying-leg-raise', 'russian-twist', 'flutter-kick'],
+  },
+  {
+    id: 'lying-leg-raise',
+    name: 'Lying Leg Raise',
+    aliases: ['leg raise', 'flat bench leg raise'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'core',
+    difficulty: 2,
+    primary: ['abs'],
+    secondary: ['quads'],
+    instructions: [
+      'Lie on your back with hands under your hips and legs straight together.',
+      'Raise both legs to vertical without bending the knees much.',
+      'Lower slowly until heels hover just above the floor, then repeat.',
+    ],
+    cues: ['Press the lower back down', 'Lower slowly — the negative is the work'],
+    mistakes: ['Dropping the legs fast', 'Lower back arching at the bottom'],
+    substitutes: ['flutter-kick', 'v-up', 'hanging-leg-raise'],
+  },
+  {
+    id: 'hanging-leg-raise',
+    name: 'Hanging Leg Raise',
+    aliases: ['hanging leg lift', 'bar leg raise'],
+    source: 'atlas',
+    equipmentIds: ['pullup-bar'],
+    movement: 'core',
+    difficulty: 3,
+    primary: ['abs'],
+    secondary: ['obliques', 'forearms'],
+    instructions: [
+      'Hang from a bar with straight arms and active shoulders.',
+      'Raise straight legs to at least hip height without swinging.',
+      'Lower slowly back to the hang and reset before each rep.',
+    ],
+    cues: ['Curl the pelvis up at the top', 'No kipping'],
+    mistakes: ['Swinging for momentum', 'Stopping below hip height'],
+    substitutes: ['hanging-knee-raise', 'captains-chair-leg-raise', 'lying-leg-raise'],
+  },
+  {
+    id: 'captains-chair-leg-raise',
+    name: "Captain's Chair Leg Raise",
+    aliases: ['captains chair leg raise', 'vertical knee raise'],
+    source: 'atlas',
+    equipmentIds: ['captains-chair'],
+    movement: 'core',
+    difficulty: 2,
+    primary: ['abs'],
+    secondary: ['obliques', 'quads'],
+    instructions: [
+      'Support yourself on the forearm pads with your back against the pad.',
+      'Raise your legs until hips are near 90 degrees without swinging.',
+      'Lower slowly and stop the set when you can no longer control the descent.',
+    ],
+    cues: ['Tuck the pelvis at the top', 'Keep shoulders down, not shrugging'],
+    mistakes: ['Using momentum to swing the legs up', 'Dropping the legs fast'],
+    substitutes: ['hanging-knee-raise', 'hanging-leg-raise', 'decline-crunch'],
+  },
+  {
+    id: 'decline-crunch',
+    name: 'Decline Crunch',
+    aliases: ['decline sit-up', 'decline bench crunch'],
+    source: 'atlas',
+    equipmentIds: ['decline-bench'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['abs'],
+    secondary: ['obliques'],
+    instructions: [
+      'Hook your feet under the pad of a decline bench and lie back.',
+      'Crunch your ribs toward your hips, lifting shoulder blades off the pad.',
+      'Lower slowly and repeat without yanking the neck.',
+    ],
+    cues: ['Chest toward hips, not chin to chest', 'Exhale as you crunch up'],
+    mistakes: ['Pulling on the head', 'Using momentum instead of the abs'],
+    substitutes: ['stability-ball-crunch', 'heel-tap', 'bicycle-crunch'],
+  },
+  {
+    id: 'stability-ball-crunch',
+    name: 'Stability Ball Crunch',
+    aliases: ['swiss ball crunch', 'exercise ball crunch'],
+    source: 'atlas',
+    equipmentIds: ['stability-ball'],
+    movement: 'core',
+    difficulty: 1,
+    primary: ['abs'],
+    secondary: ['obliques'],
+    instructions: [
+      'Sit on the ball and walk your feet out until your lower back rests on it.',
+      'Crunch up by bringing ribs toward hips, letting the ball support your spine.',
+      'Lower slowly into a comfortable stretch and repeat.',
+    ],
+    cues: ['Full stretch at the bottom', 'Hips stay still on the ball'],
+    mistakes: ['Pulling on the neck', 'Hips sliding down so you roll off'],
+    substitutes: ['decline-crunch', 'heel-tap', 'dead-bug'],
+  },
+  {
+    id: 'cable-crunch',
+    name: 'Cable Crunch',
+    aliases: ['rope crunch', 'kneeling cable crunch'],
+    source: 'atlas',
+    equipmentIds: ['cable'],
+    movement: 'core',
+    difficulty: 2,
+    primary: ['abs'],
+    secondary: ['obliques'],
+    instructions: [
+      'Kneel at a high pulley with a rope behind your head, hips tall.',
+      'Crunch your ribs toward your hips by flexing the spine, not by sitting back.',
+      'Return slowly to the start and repeat with control.',
+    ],
+    cues: ['Hips stay over knees', 'Curl, do not squat'],
+    mistakes: ['Sitting the hips back to lever the weight', 'Using the arms to pull'],
+    substitutes: ['decline-crunch', 'stability-ball-crunch', 'ab-wheel-rollout'],
+  },
+  {
+    id: 'landmine-rotation',
+    name: 'Landmine Rotation',
+    aliases: ['landmine twist', 'standing landmine rotation'],
+    source: 'atlas',
+    equipmentIds: ['landmine', 'barbell'],
+    movement: 'core',
+    difficulty: 2,
+    primary: ['obliques'],
+    secondary: ['abs'],
+    instructions: [
+      'Stand holding the end of a landmine bar at chest height with both hands.',
+      'Rotate your torso to swing the bar down to one hip, letting feet pivot.',
+      'Reverse the motion through center to the other hip in a controlled arc.',
+    ],
+    cues: ['Pivot the feet with the turn', 'Arms hold, trunk rotates'],
+    mistakes: ['Keeping feet glued while twisting the knees', 'Letting the lower back round'],
+    substitutes: ['russian-twist', 'side-plank', 'heel-tap'],
+  },
+  {
+    id: 'smith-machine-squat',
+    name: 'Smith Machine Squat',
+    aliases: ['smith squat'],
+    source: 'atlas',
+    equipmentIds: ['smith-machine'],
+    movement: 'squat',
+    difficulty: 2,
+    primary: ['quads'],
+    secondary: ['glutes'],
+    instructions: [
+      'Set the bar at shoulder height and stand under it with feet slightly forward.',
+      'Unrack and squat down with a braced trunk until thighs are near parallel.',
+      'Drive through the whole foot to stand and re-rack at the top.',
+    ],
+    cues: ['Feet forward lets you stay upright', 'Brace before every rep'],
+    mistakes: ['Standing too far under the bar', 'Riding the safeties down'],
+    substitutes: ['hack-squat', 'leg-press', 'split-squat'],
+  },
+  {
+    id: 'hack-squat',
+    name: 'Hack Squat',
+    aliases: ['hack squat machine'],
+    source: 'atlas',
+    equipmentIds: ['hack-squat'],
+    movement: 'squat',
+    difficulty: 2,
+    primary: ['quads'],
+    secondary: ['glutes'],
+    instructions: [
+      'Set your back and head flat on the pad with feet shoulder-width on the platform.',
+      'Lower until knees are near 90 degrees without hips lifting off the pad.',
+      'Press through the whole foot without locking the knees at the top.',
+    ],
+    cues: ['Back stays glued to the pad', 'Knees track over toes'],
+    mistakes: ['Locking the knees at the top', 'Feet too low causing heels to lift'],
+    substitutes: ['smith-machine-squat', 'leg-press', 'db-goblet-squat'],
+  },
+  {
+    id: 'nordic-curl',
+    name: 'Nordic Curl',
+    aliases: ['nordic hamstring curl', 'natural hamstring curl'],
+    source: 'atlas',
+    equipmentIds: ['nordic-bench'],
+    movement: 'hinge',
+    difficulty: 3,
+    primary: ['hamstrings'],
+    secondary: ['glutes', 'calves'],
+    instructions: [
+      'Kneel on the pad with ankles secured and body upright.',
+      'Lower toward the floor as slowly as possible, keeping hips extended.',
+      'Push off lightly with the hands to return; expect the lowering to be the hard part.',
+    ],
+    cues: ['Hips stay straight — do not sit', 'Aim for a 5 second lowering'],
+    mistakes: ['Breaking at the hips to bail out', 'Dropping instead of lowering under tension'],
+    substitutes: ['leg-curl', 'single-leg-rdl-bw', 'db-rdl'],
+  },
+  {
+    id: 'ghd-hip-extension',
+    name: 'GHD Hip Extension',
+    aliases: ['glute ham developer hip extension', 'back extension on ghd'],
+    source: 'atlas',
+    equipmentIds: ['ghd'],
+    movement: 'hinge',
+    difficulty: 2,
+    primary: ['glutes'],
+    secondary: ['hamstrings', 'erectors'],
+    instructions: [
+      'Set the pad below your hips and anchor your ankles, torso hanging free.',
+      'Lower with a flat back to a light hamstring stretch.',
+      'Squeeze the glutes to raise the torso in line with the legs — do not hyperextend.',
+    ],
+    cues: ['Squeeze glutes, not the lower back', 'Stop at a straight line'],
+    mistakes: ['Hyperextending past straight', 'Rounding the back on the way down'],
+    substitutes: ['back-extension-bench', 'glute-bridge', 'single-leg-rdl-bw'],
+  },
+  {
+    id: 'sled-push',
+    name: 'Sled Push',
+    aliases: ['prowler push', 'weighted sled push'],
+    source: 'atlas',
+    equipmentIds: ['sled'],
+    movement: 'carry',
+    difficulty: 2,
+    primary: ['quads'],
+    secondary: ['calves', 'glutes'],
+    instructions: [
+      'Grip the sled handles at about chest height with arms extended and body at an angle.',
+      'Drive the ground away with short powerful steps, staying low.',
+      'Push for the set distance or time without letting the hips rise.',
+    ],
+    cues: ['Arms stay straight — legs do the work', 'Short, quick steps'],
+    mistakes: ['Standing up too tall', 'Bouncing at the knees instead of driving'],
+    substitutes: ['treadmill-walk', 'step-up', 'db-farmer-carry'],
+  },
+  {
+    id: 'trap-bar-deadlift',
+    name: 'Trap Bar Deadlift',
+    aliases: ['hex bar deadlift', 'trap bar dl'],
+    source: 'atlas',
+    equipmentIds: ['trap-bar'],
+    movement: 'hinge',
+    difficulty: 2,
+    primary: ['glutes', 'erectors'],
+    secondary: ['hamstrings', 'quads'],
+    instructions: [
+      'Stand in the center of the trap bar and grip the handles with a flat back.',
+      'Drive through the whole foot to stand tall, keeping the bar path vertical.',
+      'Hinge the weight back to the floor with control between reps.',
+    ],
+    cues: ['Chest up, brace before each pull', 'Push the floor away'],
+    mistakes: ['Rounding the lower back', 'Hips shooting up first'],
+    substitutes: ['db-rdl', 'barbell-rdl', 'kb-swing'],
+  },
+  {
+    id: 'weight-vest-squat',
+    name: 'Weight Vest Squat',
+    aliases: ['weighted vest squat', 'vest squat'],
+    source: 'atlas',
+    equipmentIds: ['weight-vest'],
+    movement: 'squat',
+    difficulty: 2,
+    primary: ['quads'],
+    secondary: ['glutes'],
+    instructions: [
+      'Fasten the weight vest snugly so the load cannot bounce, then stand tall.',
+      'Squat down with knees tracking over toes and chest proud.',
+      'Drive through the whole foot to stand without leaning back at the top.',
+    ],
+    cues: ['Snug vest, no bouncing load', 'Same technique as a bodyweight squat'],
+    mistakes: ['Loose vest shifting the center of mass', 'Leaning back at lockout'],
+    substitutes: ['bodyweight-squat', 'backpack-front-squat', 'db-goblet-squat'],
+  },
+  {
+    id: 'bosu-squat',
+    name: 'BOSU Ball Squat',
+    aliases: ['bosu squat', 'dome squat'],
+    source: 'atlas',
+    equipmentIds: ['bosu'],
+    movement: 'squat',
+    difficulty: 1,
+    primary: ['quads'],
+    secondary: ['glutes', 'calves'],
+    instructions: [
+      'Stand on the flat side or dome of a BOSU ball with feet hip-width.',
+      'Squat down to a comfortable depth while balancing, arms forward if needed.',
+      'Stand back up with control, keeping knees tracking over toes.',
+    ],
+    cues: ['Slow tempo while you balance', 'Look at a fixed point ahead'],
+    mistakes: ['Squatting too fast and wobbling', 'Letting knees collapse inward'],
+    substitutes: ['bodyweight-squat', 'band-squat', 'wall-sit'],
+  },
+  {
+    id: 'sandbag-good-morning',
+    name: 'Sandbag Good Morning',
+    aliases: ['loaded good morning', 'sandbag morning'],
+    source: 'atlas',
+    equipmentIds: ['sandbag'],
+    movement: 'hinge',
+    difficulty: 2,
+    primary: ['erectors'],
+    secondary: ['hamstrings', 'glutes'],
+    instructions: [
+      'Hug the sandbag high on your chest or load it across your upper back.',
+      'Hinge at the hips with a flat back until you feel a hamstring stretch.',
+      'Drive the hips forward to stand tall without leaning back.',
+    ],
+    cues: ['Soft knees, long spine', 'Hips travel back, not down'],
+    mistakes: ['Rounding the back', 'Bending the knees so it becomes a squat'],
+    substitutes: ['backpack-rdl', 'db-rdl', 'back-extension-bench'],
+  },
+  {
+    id: 'wall-sit',
+    name: 'Wall Sit',
+    aliases: ['wall hold', 'isometric squat'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'squat',
+    difficulty: 1,
+    primary: ['quads'],
+    secondary: ['glutes', 'calves'],
+    instructions: [
+      'Lean your back flat against a wall and walk your feet out.',
+      'Slide down until knees are near 90 degrees, thighs parallel to the floor.',
+      'Hold the position with steady breathing, then slide back up.',
+    ],
+    cues: ['Knees over ankles', 'Whole back on the wall'],
+    mistakes: ['Hands pressing hard on the thighs', 'Holding breath'],
+    substitutes: ['bodyweight-squat', 'split-squat', 'step-up'],
+  },
+  {
+    id: 'bodyweight-calf-raise',
+    name: 'Standing Calf Raise',
+    aliases: ['bw calf raise', 'toe raise', 'single leg calf raise'],
+    source: 'atlas',
+    equipmentIds: ['bodyweight'],
+    movement: 'accessory',
+    difficulty: 1,
+    primary: ['calves'],
+    secondary: [],
+    instructions: [
+      'Stand tall holding a wall or chair for balance.',
+      'Rise as high as possible onto the balls of your feet.',
+      'Lower to a full stretch and repeat. Use one leg at a time to make it harder.',
+    ],
+    cues: ['Pause at the top', 'Full stretch at the bottom'],
+    mistakes: ['Bouncing through the reps', 'Half range of motion'],
+    substitutes: ['machine-calf-raise', 'step-up', 'db-farmer-carry'],
+  },
 ];
 
 /* =========================================================================
@@ -1268,20 +1724,70 @@ function normalizeMuscles(muscles: string[] | undefined, fallbackBodyPart?: stri
   return result;
 }
 
-/** Map RepDB equipment string to canonical Equipment IDs (§6.4). */
-function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: string): string[] {
+/**
+ * Gear implied by the exercise name in addition to RepDB's `equipment` value.
+ * RepDB only records the modality ("dumbbell"), never the furniture the lift
+ * is performed on, so chest-supported / incline / decline work needs a bench.
+ */
+function nameImpliesBench(lowerName: string): boolean {
+  if (lowerName.includes('stretch')) return false;
+  return (
+    lowerName.includes('bench') ||
+    lowerName.includes('chest-supported') ||
+    lowerName.includes('chest supported') ||
+    lowerName.includes('incline') ||
+    lowerName.includes('decline')
+  );
+}
+
+const PULL_UP_NAME = /pull[- ]?up|chin[- ]?up/;
+
+/**
+ * RepDB leaves `equipment` empty for work that needs nothing but the floor.
+ * Anything the exercise name pins to a specific station is kept explicit so
+ * the planner can never schedule it without that station.
+ */
+function floorOnlyEquipment(lowerName: string, lowerBp: string): string[] {
+  if (lowerName.includes("captain's chair")) return ['captains-chair'];
+  if (lowerName.includes('decline crunch')) return ['decline-bench'];
+  if (lowerName.includes('bench dip') || lowerName.includes('bench leg pull')) {
+    return ['bench'];
+  }
+  if (
+    lowerName.includes('plank') ||
+    lowerName.includes('mat') ||
+    (lowerBp === 'core' && !lowerName.includes('pull-up') && !lowerName.includes('hanging'))
+  ) {
+    return ['mat'];
+  }
+  return ['bodyweight'];
+}
+
+/**
+ * Map RepDB equipment string to canonical Equipment IDs (§6.4).
+ *
+ * Every raw value maps to the exact station the exercise needs — a Smith
+ * machine is never a barbell + rack, a stability ball is never a mat, and
+ * battle ropes / sleds are never bodyweight. Values this build does not know
+ * keep an explicit `repdb:<raw>` requirement instead of degrading to
+ * bodyweight, so they cannot be scheduled without the real gear.
+ */
+export function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: string): string[] {
   const eq = (eqRaw ?? '').toLowerCase().trim();
   const lowerName = name.toLowerCase();
   const lowerBp = bodyPart.toLowerCase();
+
+  // RepDB marks true no-equipment work with an empty / bodyweight value.
+  if (eq === '' || eq === 'none' || eq === 'body_weight' || eq === 'bodyweight') {
+    return floorOnlyEquipment(lowerName, lowerBp);
+  }
 
   let mapped: string[];
 
   switch (eq) {
     case 'barbell':
       mapped = ['barbell'];
-      if (lowerName.includes('bench press') || lowerName.includes('bench')) {
-        mapped.push('bench');
-      }
+      if (nameImpliesBench(lowerName)) mapped.push('bench');
       if (lowerName.includes('back squat') || lowerName.includes('squat rack')) {
         mapped.push('squat-rack');
       }
@@ -1289,12 +1795,12 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
 
     case 'dumbbell':
       mapped = ['dumbbells'];
-      if (
-        lowerName.includes('bench press') ||
-        (lowerName.includes('bench') && !lowerName.includes('stretch'))
-      ) {
-        mapped.push('bench');
-      }
+      if (nameImpliesBench(lowerName)) mapped.push('bench');
+      break;
+
+    case 'kettlebell':
+      mapped = ['kettlebell'];
+      if (nameImpliesBench(lowerName)) mapped.push('bench');
       break;
 
     case 'cable':
@@ -1307,21 +1813,17 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       }
       break;
 
-    case 'kettlebell':
-      mapped = ['kettlebell'];
-      break;
-
     case 'ez_bar':
       mapped = ['ez-bar'];
-      if (lowerName.includes('bench press') || lowerName.includes('bench')) {
-        mapped.push('bench');
-      }
+      if (nameImpliesBench(lowerName)) mapped.push('bench');
       break;
 
     case 'resistance_band':
     case 'loop_band':
     case 'band':
       mapped = ['bands'];
+      // Band-assisted pull-ups still need something to hang from.
+      if (PULL_UP_NAME.test(lowerName)) mapped.push('pullup-bar');
       break;
 
     case 'pull_up_bar':
@@ -1344,7 +1846,12 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'smith_machine':
-      mapped = ['barbell', 'squat-rack'];
+      mapped = ['smith-machine'];
+      if (lowerName.includes('bench press')) mapped.push('bench');
+      break;
+
+    case 'hack_squat':
+      mapped = ['hack-squat'];
       break;
 
     case 'chest_press_machine':
@@ -1370,7 +1877,6 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'leg_press':
-    case 'hack_squat':
       mapped = ['leg-press'];
       break;
 
@@ -1402,8 +1908,11 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'back_extension_machine':
-    case 'glute_ham_developer':
       mapped = ['back-extension'];
+      break;
+
+    case 'glute_ham_developer':
+      mapped = ['ghd'];
       break;
 
     case 'preacher_curl_machine':
@@ -1427,6 +1936,11 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'trap_bar':
+      mapped = ['trap-bar'];
+      break;
+
+    // Plate work and plate-loaded machines: the bar is the closest thing we
+    // model; both still require real iron, never bodyweight.
     case 'plates':
     case 'shrug_machine':
       mapped = ['barbell'];
@@ -1443,16 +1957,19 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'ab_crunch_machine':
+      mapped = ['ab-crunch'];
+      break;
+
     case 'stability_ball':
-      mapped = ['mat'];
+      mapped = ['stability-ball'];
       break;
 
     case 'plyo_box':
-      mapped = ['chair'];
+      mapped = ['plyo-box'];
       break;
 
     case 'slam_ball':
-      mapped = ['kettlebell'];
+      mapped = ['slam-ball'];
       break;
 
     case 'climbing_rope':
@@ -1460,30 +1977,41 @@ function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: st
       break;
 
     case 'battle_rope':
+      mapped = ['battle-rope'];
+      break;
+
     case 'sled':
+      mapped = ['sled'];
+      break;
+
     case 'jump_rope':
-    case 'body_weight':
-    case 'bodyweight':
-    case 'none':
+      mapped = ['jump-rope'];
+      break;
+
     default:
-      if (lowerName.includes('bench dip') || lowerName.includes('bench leg pull')) {
-        mapped = ['bench'];
-      } else if (
-        lowerName.includes('plank') ||
-        lowerName.includes('mat') ||
-        (lowerBp === 'core' &&
-          !lowerName.includes('pull-up') &&
-          !lowerName.includes('hanging'))
-      ) {
-        mapped = ['mat'];
-      } else {
-        mapped = ['bodyweight'];
-      }
+      // Unknown requirement: keep it explicit (`repdb:<raw>`) so the planner
+      // can never silently schedule this exercise on bodyweight alone.
+      mapped = [`repdb:${eq}`];
       break;
   }
 
+  if (/\blandmine\b/.test(lowerName)) {
+    // An anchor is not a complete landmine setup: the bar is still required
+    // and must remain visible to barbell-avoidance checks.
+    mapped = [...new Set([...mapped.filter((id) => id !== 'bodyweight' && id !== 'mat'), 'landmine', 'barbell'])];
+  }
   return mapped;
 }
+
+/** Driving muscles of a real lower-body compound pattern (§9). */
+const COMPOUND_LOWER_MUSCLES = new Set([
+  'quadriceps',
+  'quads',
+  'gluteus_maximus',
+  'hamstrings',
+  'gastrocnemius',
+  'soleus',
+]);
 
 /** Map RepDB force, mechanic, category and body_part to canonical Movement. */
 function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
@@ -1495,7 +2023,7 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
   const mech = (raw.mechanic ?? '').toLowerCase();
   const prim = raw.primary_muscles ?? [];
 
-  // Mobility / stretching
+  // Mobility: stretching and yoga flows are not strength work.
   if (cat === 'stretching' || name.includes('stretch') || id.includes('stretch')) {
     return 'mobility';
   }
@@ -1520,6 +2048,35 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     prim.includes('obliques')
   ) {
     return 'core';
+  }
+
+  // Yoga poses and mobility drills: a held pose is assistance work and must
+  // never fill a squat/hinge/push/pull slot.
+  if (
+    /\bpose\b/.test(name) ||
+    name.includes('facing dog') ||
+    name.includes('downward dog') ||
+    name.includes('warrior') ||
+    name.includes('crescent lunge') ||
+    name.includes('leg swing')
+  ) {
+    return 'mobility';
+  }
+
+  // Assistance work for muscles no squat/hinge/push/pull pattern drives in
+  // isolation: clamshells, hip abduction/adduction, hip-flexor drills…
+  if (
+    (bp === 'upper_legs' || bp === 'lower_legs') &&
+    prim.length > 0 &&
+    !prim.some((m) => COMPOUND_LOWER_MUSCLES.has(m)) &&
+    !name.includes('leg press')
+  ) {
+    return 'accessory';
+  }
+
+  // Static bodyweight holds are assistance work, not a pull pattern.
+  if (name.includes('dead hang') || name.includes('front lever') || name.includes('back lever')) {
+    return 'accessory';
   }
 
   // Accessory: single joint isolation work
@@ -1554,6 +2111,7 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     name.includes('hack') ||
     name.includes('split squat') ||
     (bp === 'upper_legs' &&
+      mech === 'compound' &&
       (prim.includes('quadriceps') || prim.includes('quads')) &&
       force === 'push')
   ) {
@@ -1565,15 +2123,18 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     name.includes('deadlift') ||
     name.includes('rdl') ||
     name.includes('hip thrust') ||
+    name.includes('glute drive') ||
     name.includes('glute bridge') ||
     name.includes('bridge') ||
     name.includes('good morning') ||
     name.includes('swing') ||
+    name.includes('high pull') ||
     name.includes('back extension') ||
     name.includes('hyperextension') ||
     name.includes('clean') ||
     name.includes('snatch') ||
     (bp === 'upper_legs' &&
+      mech === 'compound' &&
       (prim.includes('gluteus_maximus') || prim.includes('hamstrings')) &&
       (force === 'pull' || force === 'hinge'))
   ) {
@@ -1599,7 +2160,7 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     name.includes('pull-apart') ||
     name.includes('pull apart') ||
     name.includes('reverse fly') ||
-    (bp === 'back' && force === 'pull')
+    (bp === 'back' && force === 'pull' && mech === 'compound')
   ) {
     return 'hpull';
   }
@@ -1613,7 +2174,7 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     name.includes('pike') ||
     name.includes('handstand') ||
     name.includes('dip') ||
-    (bp === 'shoulders' && force === 'push')
+    (bp === 'shoulders' && force === 'push' && mech === 'compound')
   ) {
     return 'vpush';
   }
@@ -1626,7 +2187,7 @@ function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
     name.includes('push up') ||
     name.includes('floor press') ||
     name.includes('fly') ||
-    (bp === 'chest' && force === 'push')
+    (bp === 'chest' && force === 'push' && mech === 'compound')
   ) {
     return 'hpush';
   }

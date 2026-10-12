@@ -1,4 +1,5 @@
 import { db } from './db';
+import { MUSCLE_BY_ID } from './muscles';
 import type {
   BackupDoc,
   UserProfile,
@@ -89,7 +90,8 @@ export async function importBackup(
       !isRecord(prof.equipment) || !['home','gym','travel'].every((place) => stringList((prof.equipment as Record<string,unknown>)[place])) ||
       !finite(prof.daysPerWeek) || !Number.isInteger(prof.daysPerWeek) || prof.daysPerWeek < 2 || prof.daysPerWeek > 6 || !finite(prof.durationMin) || ![30,45,60].includes(prof.durationMin) ||
       !stringList(prof.weekdays) || !prof.weekdays.every((day) => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].includes(day)) ||
-      !['restrictions','liked','disliked','pinned','favourites'].every((key) => prof[key] === undefined || stringList(prof[key])) ||
+      !['restrictions','liked','disliked','pinned','favourites','avoidEquipment','targetMuscles'].every((key) => prof[key] === undefined || stringList(prof[key])) ||
+      (Array.isArray(prof.targetMuscles) && !prof.targetMuscles.every((id) => Object.hasOwn(MUSCLE_BY_ID, String(id)))) ||
       typeof prof.discomfortNotes !== 'string' || typeof prof.otherSports !== 'string' || typeof prof.onboarded !== 'boolean' ||
       (prof.weightUnit !== undefined && prof.weightUnit !== 'kg' && prof.weightUnit !== 'lb')) {
       return { success: false, error: 'Invalid profile preferences or equipment' };

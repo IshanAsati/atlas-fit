@@ -4,6 +4,9 @@ import { finishSession, getActiveWorkout, getUserProfile, getWorkoutSessions, sa
 import { CATALOG_BY_ID, findSubstitutes, getExerciseImageUrl, searchExercises } from '../../data/catalog';
 import { saveRoutineFromSession } from '../../data/training';
 import { MUSCLE_BY_ID } from '../../data/muscles';
+import { EQUIPMENT_BY_ID } from '../../data/equipment';
+import { MOVEMENT_LABELS } from '../../data/movements';
+import { avoidsEquipment } from '../planner/validator';
 import { RestTimer } from './RestTimer';
 import { canonicalLoad, copySource, displayLoad, elapsedWorkoutSeconds, formatDuration, formatPerformance, hasRealPerformance, previousSet, workingMetrics } from './workoutHelpers';
 import type { WeightUnit } from './workoutHelpers';
@@ -11,6 +14,7 @@ import './ActiveWorkout.css';
 import { Modal } from '../../design/Modal';
 import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
+
 
 export interface ActiveWorkoutScreenProps {
   session?: WorkoutSession;
@@ -163,6 +167,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
     const original = CATALOG_BY_ID[activeSession.items[swapIndex].exerciseId];
     const candidates = findSubstitutes(activeSession.items[swapIndex].exerciseId, equipment)
       .filter((exercise) => !profile.restrictions.includes(exercise.id) && !profile.disliked.includes(exercise.id) && exercise.difficulty <= maxDifficulty)
+      .filter((exercise) => !avoidsEquipment(exercise, profile.avoidEquipment))
       .filter((exercise) => !exercise.equipmentIds.some((id) => unavailable.includes(id)));
     // Discomfort is a stop signal, not an invitation to progress difficulty.
     return (swapReason === 'Discomfort'
@@ -172,7 +177,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
 
   const addResults = useMemo(() => !addOpen ? [] : searchExercises(addQuery, {
     location, equipment: profile?.equipment[location], movement: movement || undefined,
-  }).filter((exercise) => !profile?.restrictions.includes(exercise.id) && !profile?.disliked.includes(exercise.id) && exercise.difficulty <= maxDifficulty).slice(0, 30),
+  }).filter((exercise) => !profile?.restrictions.includes(exercise.id) && !profile?.disliked.includes(exercise.id) && !avoidsEquipment(exercise, profile?.avoidEquipment) && exercise.difficulty <= maxDifficulty).slice(0, 30),
   [addOpen, addQuery, location, profile, movement, maxDifficulty]);
 
   const updateItem = (index: number, updater: (item: SessionItem) => SessionItem) => updateSession((session) => ({
@@ -310,8 +315,9 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
     const summary = workingMetrics(completedSession);
     return <div className="active-workout-container workout-completion">
       <h1 ref={completionHeading} tabIndex={-1}>Workout saved</h1><p>{completedSession.title}</p>{errorBanner}
-      <div className="workout-summary-stats"><span><strong>{formatDuration(elapsedWorkoutSeconds(completedSession))}</strong>Training time</span><span><strong>{summary.completed}</strong>Working sets</span><span><strong>{displayLoad(summary.volumeKg, unit).toLocaleString()} {unit}</strong>Working volume</span></div>
-      <h2>Your actual performance</h2>
+      <div className="workout-summary-stats"><span><strong>{formatDuration(elapsedWorkoutSeconds(completedSession))}</strong>Training time</span><span><strong>{summary.completed}</strong>Working sets</span><span><strong>{displayLoad(summary.volumeKg, unit).toLocaleString()} {unit}</strong>Total lifted</span></div>
+      <p>Working sets only. Total lifted is weight × reps, without warm-ups or skipped exercises.</p>
+      <h2>Your completed sets</h2>
       {completedSession.items.map((item, index) => <section className="workout-summary-exercise" key={`${item.exerciseId}-${index}`}>
         <h3>{CATALOG_BY_ID[item.exerciseId]?.name ?? item.exerciseId}</h3>
         {item.skipped ? <p>Skipped · not counted</p> : <>
@@ -320,17 +326,17 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
           {item.sets.some((set) => !hasRealPerformance(set)) && <p>Unfinished sets left unmarked.</p>}
         </>}{item.discomfort && <p>Discomfort reported</p>}
       </section>)}
-      <div className="workout-routine-save"><h2>Use this workout again</h2><label htmlFor="routine-title">Routine name</label><input id="routine-title" value={routineTitle} maxLength={120} onChange={(event) => setRoutineTitle(event.target.value)} />
+      <div className="workout-routine-save"><h2>Use this workout again</h2><p>Save a routine to repeat these exercises. Your next workout starts with empty weight and rep fields.</p><label htmlFor="routine-title">Routine name</label><input id="routine-title" value={routineTitle} maxLength={120} onChange={(event) => setRoutineTitle(event.target.value)} />
         <button type="button" disabled={routineBusy || routineSaved || summary.completed === 0} onClick={() => void saveRoutine()}>{routineSaved ? 'Routine saved' : routineBusy ? 'Saving routine…' : 'Save as routine'}</button>
         {summary.completed === 0 && <p>Complete a working set to save a reusable routine.</p>}
       </div>
-      <button type="button" className="workout-primary" disabled={routineBusy} onClick={onFinishSession}>Done · Back to training</button>
+      <button type="button" className="workout-primary" disabled={routineBusy} onClick={onFinishSession}>Back to Today</button>
     </div>;
   }
 
   return <div className="active-workout-container">
     <header className="active-header">
-      <div className="active-header-top"><div><h1 className="active-title">{activeSession.title}</h1><span className="workout-location">{activeSession.location}</span></div>
+      <div className="active-header-top"><div><h1 className="active-title">{activeSession.title}</h1><span className="workout-location">{activeSession.location[0].toUpperCase() + activeSession.location.slice(1)}</span></div>
         <button type="button" className="timer-pill" aria-label={activeSession.pausedAt ? 'Resume workout timer' : 'Pause workout timer'} onClick={togglePause} disabled={busy}>{elapsed} · {activeSession.pausedAt ? 'Resume' : 'Pause'}</button>
       </div>
       <div className="workout-progress" role="progressbar" aria-label="Working sets completed" aria-valuenow={metrics.completed} aria-valuemin={0} aria-valuemax={Math.max(1, metrics.total)}><div style={{ width: `${metrics.percent}%` }} /></div>
@@ -362,7 +368,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
           </div>
           <details className="workout-demonstration"><summary>Illustrations & form guidance</summary><ExerciseFigure exercise={exercise} />
           {exercise && <div className="workout-form-cues">
-            <h3>How to perform</h3><ol>{exercise.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ol>
+            <h3>How to do it</h3><ol>{exercise.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ol>
             <h3>Form cues</h3><ul>{exercise.cues.map((cue, index) => <li key={index}>{cue}</li>)}</ul>
             <h3>Mistakes to avoid</h3><ul>{exercise.mistakes.map((mistake, index) => <li key={index}>{mistake}</li>)}</ul>
           </div>}</details>
@@ -404,7 +410,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
               </div>;
             })}
           </div>}
-          <div className="exercise-controls-bar"><button type="button" disabled={busy || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: [...current.sets, { loadKg: null, reps: null, done: false, kind: 'working' }] }))}>+ Add Set</button><button type="button" disabled={busy || item.sets.length <= 1 || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: current.sets.slice(0, -1) }))}>- Remove Set</button>
+          <div className="exercise-controls-bar"><button type="button" disabled={busy || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: [...current.sets, { loadKg: null, reps: null, done: false, kind: 'working' }] }))}>Add set</button><button type="button" disabled={busy || item.sets.length <= 1 || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: current.sets.slice(0, -1) }))}>Remove last set</button>
             <button type="button" disabled={busy} onClick={() => { setSwapIndex(itemIndex); setSwapReason(item.discomfort ? 'Discomfort' : 'Machine busy'); setBlockedEquipment(exercise?.equipmentIds.filter((id) => id !== 'bodyweight' && id !== 'mat') ?? []); }}>Swap exercise</button>
             <button type="button" disabled={busy} onClick={() => updateItem(itemIndex, (current) => ({ ...current, skipped: !current.skipped }))}>{item.skipped ? 'Unskip exercise' : 'Skip exercise'}</button>
           </div>
@@ -414,7 +420,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
       })}
     </main>
     <RestTimer key={restKey} initialSeconds={restSeconds} isOpen={restOpen} onDismiss={() => setRestOpen(false)} />
-    <footer className="action-toolbar"><button type="button" disabled={busy} onClick={() => setAddOpen(true)}>Add exercise</button><button type="button" disabled={busy} onClick={() => void leaveWorkout()}>Pause / Exit</button><button type="button" className="workout-primary" disabled={busy} onClick={() => setFinishOpen(true)}>Finish Workout</button></footer>
+    <footer className="action-toolbar"><button type="button" disabled={busy} onClick={() => setAddOpen(true)}>Add exercise</button><button type="button" disabled={busy} onClick={() => void leaveWorkout()}>Save & exit</button><button type="button" className="workout-primary" disabled={busy} onClick={() => setFinishOpen(true)}>Finish workout</button></footer>
     {swapIndex !== null && <WorkoutModal title={`Swap ${CATALOG_BY_ID[activeSession.items[swapIndex].exerciseId]?.name ?? 'exercise'}`} onClose={() => setSwapIndex(null)}>
       <label>Why swap?<select value={swapReason} onChange={(event) => setSwapReason(event.target.value as SwapReason)}>{SWAP_REASONS.map((reason) => <option key={reason}>{reason}</option>)}</select></label>
       {(swapReason === 'Machine busy' || swapReason === 'Equipment missing') && <fieldset><legend>Unavailable for this exercise</legend>{(CATALOG_BY_ID[activeSession.items[swapIndex].exerciseId]?.equipmentIds ?? []).filter((id) => id !== 'bodyweight').map((id) => <label className="workout-checkbox" key={id}><input type="checkbox" checked={blockedEquipment.includes(id)} onChange={(event) => setBlockedEquipment((old) => event.target.checked ? [...old, id] : old.filter((value) => value !== id))} />{id.replaceAll('-', ' ')}</label>)}{!blockedEquipment.length && <p>Select equipment to avoid, if any.</p>}</fieldset>}
@@ -436,11 +442,11 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
           return { ...session, items };
         });
         setSwapIndex(null);
-      }}><strong>{candidate.name}</strong><span>{candidate.equipmentIds.join(', ')} · {candidate.difficulty === 1 ? 'Beginner-friendly' : candidate.difficulty === 2 ? 'Some experience' : 'Experienced'}</span></button>)}
+      }}><strong>{candidate.name}</strong><span>{candidate.equipmentIds.map((id) => EQUIPMENT_BY_ID[id]?.label ?? id).join(', ')} · {candidate.difficulty === 1 ? 'Beginner-friendly' : candidate.difficulty === 2 ? 'Some experience' : 'Experienced'}</span></button>)}
     </WorkoutModal>}
     {addOpen && <WorkoutModal title="Add exercise" onClose={() => setAddOpen(false)}>
-      <label>Find an exercise<input type="search" placeholder="Name or alias" value={addQuery} onChange={(event) => setAddQuery(event.target.value)} /></label>
-      <label>Movement<select value={movement} onChange={(event) => setMovement(event.target.value as Movement | '')}><option value="">All movements</option>{(['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull', 'core', 'carry', 'accessory', 'mobility'] as Movement[]).map((value) => <option key={value}>{value}</option>)}</select></label>
+      <label>Find an exercise<input type="search" placeholder="Search by exercise name" value={addQuery} onChange={(event) => setAddQuery(event.target.value)} /></label>
+      <label>Movement<select value={movement} onChange={(event) => setMovement(event.target.value as Movement | '')}><option value="">All movements</option>{(['squat', 'hinge', 'hpush', 'vpush', 'hpull', 'vpull', 'core', 'carry', 'accessory', 'mobility'] as Movement[]).map((value) => <option key={value} value={value}>{MOVEMENT_LABELS[value]}</option>)}</select></label>
       {!addResults.length && <p>No exercises match your equipment, restrictions, experience, and search.</p>}
       {addResults.map((exercise) => <button type="button" className="workout-candidate" key={exercise.id} onClick={() => {
         const index = sessionRef.current?.items.length ?? 0;
@@ -449,9 +455,9 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
       }}><strong>{exercise.name}</strong><span>{exercise.primary.map((muscle) => MUSCLE_BY_ID[muscle]?.short ?? muscle).join(', ')}</span></button>)}
     </WorkoutModal>}
     {finishOpen && <WorkoutModal title="Finish workout" onClose={() => { if (!busy) setFinishOpen(false); }}>
-      <h3>Save what you actually logged</h3><p>{metrics.completed} of {metrics.total} working sets completed in {elapsed}. Warm-ups and skipped exercises are excluded from working volume.</p>
-      <p>{displayLoad(metrics.volumeKg, unit).toLocaleString()} {unit} working volume. Unfinished sets will stay unmarked.</p>
-      {errorBanner}<button type="button" className="workout-primary" disabled={busy} onClick={() => void finishWorkout()}>{busy ? 'Saving workout…' : 'Save & Finish Session'}</button><button type="button" disabled={busy} onClick={() => setFinishOpen(false)}>Resume Workout</button>
+      <h3>Ready to finish?</h3><p>{metrics.completed} of {metrics.total} working sets completed in {elapsed}. Your completed sets will be saved to history. Unfinished sets stay unmarked.</p>
+      <p>{displayLoad(metrics.volumeKg, unit).toLocaleString()} {unit} lifted (weight × reps). Warm-ups and skipped exercises aren’t counted.</p>
+      {errorBanner}<button type="button" className="workout-primary" disabled={busy} onClick={() => void finishWorkout()}>{busy ? 'Saving workout…' : 'Save workout'}</button><button type="button" disabled={busy} onClick={() => setFinishOpen(false)}>Keep training</button>
     </WorkoutModal>}
   </div>;
 };

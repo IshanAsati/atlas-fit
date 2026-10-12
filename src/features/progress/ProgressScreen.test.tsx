@@ -55,7 +55,7 @@ describe('ProgressScreen', () => {
     expect(screen.getByText('× 8 reps')).toBeDefined();
     expect(screen.queryByText(/50 kg/)).toBeNull();
     expect(screen.queryByText(/60 kg/)).toBeNull();
-    expect(screen.getByText(/Not an estimated one-rep max/)).toBeDefined();
+    expect(screen.getByText(/isn’t an estimated one-rep max/)).toBeDefined();
     expect(screen.getByText('15 reps · no added load')).toBeDefined();
   });
   it('uses the saved display unit without converting canonical records', async () => {
@@ -83,13 +83,13 @@ describe('ProgressScreen', () => {
   it('distinguishes honest empty history from load failures', async () => {
     vi.mocked(db.getWorkoutSessions).mockResolvedValue([]);
     const { unmount } = render(<ProgressScreen />);
-    await screen.findByText('Your history starts with a workout');
+    await screen.findByText('No completed workouts yet');
     fireEvent.click(screen.getByRole('button', { name: 'Strength' }));
-    expect(screen.getByText('Strength comes from your logged sets')).toBeDefined();
+    expect(screen.getByText('See your strength over time')).toBeDefined();
     unmount();
     vi.mocked(db.getWorkoutSessions).mockRejectedValue(new Error('Blocked'));
     render(<ProgressScreen />);
     await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
-    expect(screen.queryByText('Your history starts with a workout')).toBeNull();
+    expect(screen.queryByText('No completed workouts yet')).toBeNull();
   });
 });

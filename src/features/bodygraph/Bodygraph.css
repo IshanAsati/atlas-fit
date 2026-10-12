@@ -1,5 +1,5 @@
 .bodygraph-container, .bodygraph-screen {
-  color-scheme: light;
+  color-scheme: inherit;
   --muscle-primary: #E86672;
   --muscle-secondary: #A88BDA;
   --muscle-neutral: #DADFD5;
@@ -26,7 +26,7 @@
 .bodyfig .mg:hover { stroke: var(--graph-ink); }
 .bodyfig .mg:focus-visible, .bodyfig .mg.selected { outline: none; stroke: var(--graph-ink); stroke-width: 2.5px; }
 .bodygraph-view-toggle, .bodygraph-mode-toggle, .bodygraph-screen-seg, .bodygraph-window-seg {
-  display: flex; gap: 4px; background: rgb(255 255 255 / .72); border-radius: 999px; padding: 4px; width: 100%;
+  display: flex; gap: 4px; background: var(--surface); border-radius: 999px; padding: 4px; width: 100%;
 }
 .bodygraph-container .seg { border: 0; background: var(--surface); min-height: 0; }
 .bodygraph-view-toggle { max-width: 240px; order: -1; }
@@ -42,7 +42,7 @@
 }
 .bodygraph-screen button:focus-visible, .bodygraph-container button:focus-visible,
 .bodygraph-screen input:focus-visible, .bodygraph-container select:focus-visible, .bodygraph-muscle-list summary:focus-visible {
-  outline: 2px solid var(--action); outline-offset: 3px;
+   outline: 2px solid var(--focus); outline-offset: 3px;
 }
 .bodygraph-target-picker { position: relative; margin-bottom: 14px; }
 .bodygraph-selected-exercise { width: 100%; padding: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: transparent; text-align: left; }
@@ -80,7 +80,7 @@
 .bodygraph-secondary-option input { accent-color: var(--graph-ink); width: 18px; height: 18px; }
 .bodygraph-empty { padding: 12px 0; }
 .bodygraph-container ::selection, .bodygraph-screen ::selection { background: var(--graph-lime); color: var(--action-ink); }
-.bodygraph-container, .bodygraph-screen { accent-color: var(--action); caret-color: var(--action); scrollbar-color: var(--graph-muted) var(--graph-paper); }
+.bodygraph-container, .bodygraph-screen { accent-color: var(--focus); caret-color: var(--text); scrollbar-color: var(--graph-muted) var(--graph-paper); }
 @media (max-width: 360px) { .bodygraph-flipper { width: 168px; height: 280px; } }
 
 /* Inspector shares the application's matte forest surface. */

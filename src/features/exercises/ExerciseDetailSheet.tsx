@@ -2,7 +2,9 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Exercise, MuscleId, UserProfile, WorkoutSession, SessionItem } from '../../data/types';
 import { MUSCLE_BY_ID } from '../../data/muscles';
 import { equipmentLabel, DEFAULT_EQUIPMENT } from '../../data/equipment';
+import { MOVEMENT_LABELS } from '../../data/movements';
 import { findSubstitutes } from '../../data/catalog';
+import { avoidsEquipment } from '../planner/validator';
 import {
   getUserProfile,
   toggleFavourite,
@@ -115,7 +117,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
   // Substitute exercises matching current available equipment
   const substitutes = useMemo(() => {
     if (!exercise) return [];
-    return findSubstitutes(exercise.id, availableEquipment).filter((candidate) => !profile?.restrictions.includes(candidate.id) && candidate.difficulty <= (profile?.experience === 'experienced' ? 3 : profile?.experience === 'some' ? 2 : 1)).slice(0, 5);
+    return findSubstitutes(exercise.id, availableEquipment).filter((candidate) => !profile?.restrictions.includes(candidate.id) && !avoidsEquipment(candidate, profile?.avoidEquipment) && candidate.difficulty <= (profile?.experience === 'experienced' ? 3 : profile?.experience === 'some' ? 2 : 1)).slice(0, 5);
   }, [exercise, availableEquipment, profile]);
 
   // Toggle Favourite
@@ -211,13 +213,13 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                   fontWeight: 700,
                   textTransform: 'uppercase',
                   letterSpacing: '0.6px',
-                  color: 'var(--action, #57B9FA)',
+                  color: 'var(--action-text)',
                    background: 'var(--surface-2)',
                   padding: '2px 8px',
                   borderRadius: 6,
                 }}
               >
-                {exercise.movement.toUpperCase()}
+                {MOVEMENT_LABELS[exercise.movement]}
               </span>
               <span className={`ex-badge ex-badge-difficulty diff-${exercise.difficulty}`}>
                 {difficultyText}
@@ -480,8 +482,8 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                           </span>
                         </div>
                       </div>
-                      <span style={{ fontSize: 12, color: 'var(--action, #00E5FF)', fontWeight: 600 }}>
-                        Inspect →
+                      <span style={{ fontSize: 12, color: 'var(--action-text)', fontWeight: 600 }}>
+                        View <Icon name="arrow" size={14} />
                       </span>
                     </button>
                   );

@@ -27,6 +27,22 @@ export function hasRequiredEquipment(
 }
 
 /**
+ * Checks whether an exercise needs equipment the user would rather not use.
+ * Availability and preference are different questions: you may own a barbell
+ * and still not want it programmed.
+ */
+export function avoidsEquipment(
+  exercise: Exercise,
+  avoidEquipment: string[] = [],
+): boolean {
+  if (!avoidEquipment || avoidEquipment.length === 0) return false;
+  const avoided = new Set(avoidEquipment);
+  if (avoided.has('dumbbells')) avoided.add('adj-dumbbells');
+  if (avoided.has('adj-dumbbells')) avoided.add('dumbbells');
+  return exercise.equipmentIds.some((eq) => avoided.has(eq));
+}
+
+/**
  * Checks whether an exercise matches discomfort notes written by the user.
  */
 export function matchesDiscomfortNotes(
@@ -147,6 +163,7 @@ export function isExerciseEligible(
 
   return (
     hasRequiredEquipment(candidate, availableEquipment) &&
+    !avoidsEquipment(candidate, profile.avoidEquipment) &&
     !conflictsWithRestrictions(candidate, profile, feedback) &&
     isSuitableForExperience(candidate, profile.experience)
   );
@@ -211,6 +228,12 @@ export function validatePlan(
       if (!hasRequiredEquipment(ex, availableEquipment)) {
         issues.push(
           `Exercise "${ex.name}" requires equipment not available for location "${plan.location}".`,
+        );
+      }
+
+      if (avoidsEquipment(ex, profile.avoidEquipment)) {
+        issues.push(
+          `Exercise "${ex.name}" uses equipment you asked the planner to avoid.`,
         );
       }
 

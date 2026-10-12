@@ -73,6 +73,9 @@ function fitsGoal(candidate: Exercise, goal: UserProfile['goal']): boolean {
   }
 }
 
+/** Bonus for training a muscle the user asked the planner to focus on. */
+export const TARGET_MUSCLE_BONUS = 25;
+
 /**
  * Candidate exercise scoring engine (§7.2).
  *
@@ -80,6 +83,7 @@ function fitsGoal(candidate: Exercise, goal: UserProfile['goal']): boolean {
  * - Fit for movement target: +40
  * - Fit for goal (strength = compounds/heavier, endurance = higher reps/bodyweight/machines, technique = lower difficulty): +20
  * - User liked: +20, Pinned: +50, Disliked: -100
+ * - Requested focus muscle: +25
  * - Recent session rotation (penalize if trained in very recent session to avoid repetition): -15
  * - Suitability for experience (difficulty matches experience): +15
  * - Equipment friction: prefer simpler equipment when home/travel: +10
@@ -113,12 +117,18 @@ export function scoreExercise(
     score -= 100;
   }
 
-  // 4. Recent session rotation (-15)
+  // 4. Requested focus muscles (+25)
+  const targetMuscles = profile.targetMuscles ?? [];
+  if (candidate.primary.some((muscle) => targetMuscles.includes(muscle))) {
+    score += TARGET_MUSCLE_BONUS;
+  }
+
+  // 5. Recent session rotation (-15)
   if (isTrainedInRecentSession(candidate.id, history)) {
     score -= 15;
   }
 
-  // 5. Suitability for experience (+15)
+  // 6. Suitability for experience (+15)
   // Difficulty 1 = beginner ('new'), 2 = intermediate ('some'), 3 = advanced ('experienced')
   if (
     (profile.experience === 'new' && candidate.difficulty === 1) ||
@@ -128,7 +138,7 @@ export function scoreExercise(
     score += 15;
   }
 
-  // 6. Equipment friction (+10): prefer simpler equipment for home/travel
+  // 7. Equipment friction (+10): prefer simpler equipment for home/travel
   if (profile.activeLocation === 'home' || profile.activeLocation === 'travel') {
     const usesOnlySimpleEquipment =
       candidate.equipmentIds.length > 0 &&

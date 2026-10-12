@@ -180,6 +180,7 @@ describe('PlanScreen schedule and reusable routines', () => {
 
   it('opens a routine draft from a day and saves only after an explicit Save', async () => {
     await mount(); fireEvent.click(screen.getAllByRole('button', { name: 'Save as routine' })[0]);
+    expect(screen.getByRole('heading', { name: 'Save workout as a routine' })).toBeDefined();
     expect(screen.getByText('Unsaved changes')).toBeDefined(); expect(training.saveRoutine).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Routine name'), { target: { value: 'My new routine' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save routine' }));
@@ -194,7 +195,7 @@ describe('PlanScreen schedule and reusable routines', () => {
     savedRoutines();
     fireEvent.click(screen.getByRole('button', { name: 'Create custom workout' }));
     expect(screen.getByRole('heading', { name: 'Create custom workout' })).toBeDefined();
-    expect(screen.getByText('Start with an empty workout, then add exercises below.')).toBeDefined();
+    expect(screen.getByText('Name your workout, then add your first exercise below.')).toBeDefined();
     fireEvent.change(screen.getByLabelText('Routine name'), { target: { value: 'Travel strength' } });
     fireEvent.change(screen.getByLabelText('Add an exercise'), { target: { value: 'push-up' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
@@ -210,6 +211,16 @@ describe('PlanScreen schedule and reusable routines', () => {
     const session = onStart.mock.calls[0][0];
     expect(session.title).toBe('Travel strength');
     expect(session.items[0].sets.every((set: PerformedSet) => set.reps === null && set.loadKg === null && !set.done)).toBe(true);
+  });
+
+  it('keeps first-time routine guidance out of the open builder', async () => {
+    vi.mocked(training.getRoutines).mockResolvedValue([]);
+    await mount(); savedRoutines();
+    expect(screen.getByText('No saved routines yet')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Create custom workout' }));
+    expect(screen.queryByText('No saved routines yet')).toBeNull();
+    expect(screen.getByText(/Exercises match your home equipment/)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Save routine' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('renames, reorders, edits, and removes exercises while preserving unedited metadata', async () => {
@@ -272,7 +283,7 @@ describe('PlanScreen schedule and reusable routines', () => {
   it('downloads media only on request and reports partial failures honestly', async () => {
     vi.mocked(media.downloadExerciseMedia).mockResolvedValue({ downloaded: 3, total: 4, failed: 1 });
     await mount(); expect(media.downloadExerciseMedia).not.toHaveBeenCalled();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Download workout media' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save offline images' })[0]);
     await screen.findByText(/3 of 4 images available offline\. 1 failed/);
     expect(media.downloadExerciseMedia).toHaveBeenCalledWith(['push-up', 'dumbbell-press'], expect.any(Function));
   });
