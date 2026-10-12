@@ -4,7 +4,7 @@
   --progress-lime: var(--action);
   --progress-muted: var(--text-2);
   --progress-line: var(--hairline);
-  color-scheme: dark;
+  color-scheme: light;
   min-height: 100%; flex: 1; background: var(--progress-chalk); color: var(--progress-forest);
   padding-bottom: calc(var(--tab-h, 76px) + 24px); font-variant-numeric: tabular-nums;
   accent-color: var(--action); caret-color: var(--action);
@@ -18,9 +18,9 @@
 .progress-screen button { min-height: 44px; cursor: pointer; }
 .progress-screen button:focus-visible, .progress-screen select:focus-visible { outline: 2px solid var(--action); outline-offset: 3px; }
 .progress-screen button:disabled { opacity: .55; cursor: default; }
-.progress-navigation { margin: 0 16px; padding: 4px; display: flex; gap: 4px; border-radius: 14px; background: var(--surface); }
+.progress-navigation { margin: 0 16px; padding: 4px; display: flex; gap: 4px; border-radius: 999px; background: rgb(255 255 255 / .72); }
 .progress-navigation button { flex: 1; border: 0; background: transparent; border-radius: 10px; font-size: 14px; font-weight: 650; }
-.progress-navigation button[aria-pressed='true'] { background: var(--surface-3); color: var(--text); }
+.progress-navigation button[aria-pressed='true'] { background: var(--nav-bg); color: var(--nav-text); border-radius: 999px; }
 .progress-navigation button:hover:not([aria-pressed='true']) { background: var(--surface-hover); }
 .progress-content { padding: 20px 16px 0; }
 .progress-content > .bodygraph-screen { padding: 0; }
@@ -35,7 +35,7 @@
 .progress-calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
 .progress-weekday { text-align: center; color: var(--progress-muted); font-size: 11px; padding: 4px 0 8px; }
 .progress-calendar-day { position: relative; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 3px; padding: 4px 0; border: 1px solid transparent; border-radius: 12px; background: transparent; font-size: 13px; }
-.progress-calendar-day.has-session { background: var(--surface-2); font-weight: 750; }
+.progress-calendar-day.has-session { background: #d4bdf9; font-weight: 750; }
 .progress-calendar-day[aria-current='date'] { border-color: var(--action); }
 .progress-calendar-day[aria-pressed='true'] { background: var(--action); color: var(--action-ink); }
 .progress-calendar-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
@@ -73,7 +73,7 @@
 .progress-pr .progress-pr-value { color: var(--progress-forest); font-size: 27px; font-weight: 750; letter-spacing: -.02em; }
 .progress-pr-value span { font-size: 19px; font-weight: 550; }
 .progress-definition { font-size: 12px; line-height: 1.65; color: var(--progress-muted); }
-.progress-suggestion { margin-top: 20px; padding: 16px; background: var(--surface); border-radius: 14px; }
+.progress-suggestion { margin-top: 20px; padding: 16px; background: var(--surface); border-radius: 20px; box-shadow: 0 8px 24px rgb(31 25 45 / .045); }
 .progress-suggestion h3 { margin: 0 0 8px; font-size: 15px; }
 .progress-suggestion p { font-size: 13px; line-height: 1.65; margin: 0; }
 .progress-strength-history { list-style: none; padding: 0; margin: 16px 0; }

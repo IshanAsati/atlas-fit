@@ -1,8 +1,8 @@
 .plan-screen {
-  --plan-forest: var(--forest, #173d32);
-  --plan-chalk: var(--chalk, #f3f5ec);
-  --plan-lime: var(--lime, #d7ef86);
-  gap: 20px;
+  --plan-forest: var(--ink);
+  --plan-chalk: var(--peach-fuzz);
+  --plan-lime: var(--tangerine-dream);
+  gap: 16px;
   color: var(--text);
 }
 .plan-screen h2, .plan-screen h3, .plan-screen p { margin: 0; }
@@ -18,7 +18,7 @@
 .plan-screen fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .plan-screen legend { margin-bottom: 8px; font-size: .875rem; font-weight: 600; }
 .plan-screen summary { min-height: 44px; cursor: pointer; font-weight: 650; align-content: center; }
-.plan-page-header { display: grid; gap: 6px; }
+.plan-page-header { display: grid; gap: 5px; padding-top: 3px; }
 .plan-page-header .h-hero { margin: 0; }
 .plan-status:empty { display: none; }
 .plan-status { font-size: .875rem; color: var(--text-2); }
@@ -47,16 +47,16 @@
 .plan-preview-days li { display: grid; gap: 4px; font-size: .875rem; }
 .plan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .plan-days { display: grid; gap: 20px; }
-.plan-day { padding: 0; overflow: hidden; scroll-margin-top: 20px; }
-.plan-day-header { padding: 18px; background: var(--surface-2); }
+.plan-day { padding: 0; overflow: hidden; scroll-margin-top: 72px; }
+.plan-day-header { padding: 18px; background: var(--surface-2); border-radius: 20px 20px 0 0; }
 .plan-day-header .btn { flex-shrink: 0; }
 .plan-exercises { margin: 0; padding: 0; list-style: none; }
-.plan-exercise { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--hairline); }
+.plan-exercise { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--hairline); background: var(--surface); }
 .plan-exercise-summary { min-width: 0; flex: 1; }
 .plan-exercise-link { display: flex; align-items: center; gap: 12px; color: var(--text); background: none; border: 0; padding: 0; font: inherit; text-align: left; }
 button.plan-exercise-link { width: 100%; cursor: pointer; }
 .plan-exercise-name { font-size: .9375rem; font-weight: 650; line-height: 1.4; }
-.plan-thumbnail { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; overflow: hidden; background: var(--surface-2); border-radius: 8px; }
+.plan-thumbnail { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; flex-shrink: 0; overflow: hidden; background: var(--surface-2); border-radius: 16px; }
 .plan-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
 .plan-thumbnail-fallback { padding: 4px; font-size: .625rem; line-height: 1.3; text-align: center; color: var(--text-2); }
 .plan-prescription { padding-left: 64px; font-size: .8125rem; color: var(--text-2); font-variant-numeric: tabular-nums; }
@@ -76,7 +76,7 @@ button.plan-exercise-link { width: 100%; cursor: pointer; }
 .plan-add-exercise { display: flex; align-items: flex-end; gap: 12px; }
 .plan-add-exercise label { flex: 1; min-width: 0; }
 .plan-routine-list { list-style: none; padding: 0; margin: 0; }
-.plan-routine { display: grid; gap: 14px; padding-block: 20px; border-top: 1px solid var(--hairline); }
+.plan-routine { display: grid; gap: 12px; padding: 16px; margin-top: 10px; border: 0; border-radius: 20px; background: var(--surface); box-shadow: 0 8px 24px rgb(31 25 45 / .045); }
 .plan-routine > div:first-child { display: grid; gap: 6px; }
 .plan-delete-confirm { display: grid; gap: 12px; }
 .plan-empty { display: grid; gap: 12px; padding-block: 24px; }

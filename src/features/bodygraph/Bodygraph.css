@@ -1,5 +1,5 @@
 .bodygraph-container, .bodygraph-screen {
-  color-scheme: dark;
+  color-scheme: light;
   --muscle-primary: #E86672;
   --muscle-secondary: #A88BDA;
   --muscle-neutral: #DADFD5;
@@ -15,7 +15,7 @@
   --graph-line: var(--hairline);
   color: var(--graph-ink);
 }
-.bodygraph-screen { padding: 12px 16px 24px; background: var(--graph-paper); }
+.bodygraph-screen { padding: 12px 16px 24px; background: transparent; }
 .bodygraph-container { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
 .bodygraph-card { display: flex; justify-content: center; width: 100%; }
 .bodygraph-flipper { width: 180px; height: 300px; }
@@ -26,7 +26,7 @@
 .bodyfig .mg:hover { stroke: var(--graph-ink); }
 .bodyfig .mg:focus-visible, .bodyfig .mg.selected { outline: none; stroke: var(--graph-ink); stroke-width: 2.5px; }
 .bodygraph-view-toggle, .bodygraph-mode-toggle, .bodygraph-screen-seg, .bodygraph-window-seg {
-  display: flex; gap: 4px; background: var(--surface); border-radius: 14px; padding: 4px; width: 100%;
+  display: flex; gap: 4px; background: rgb(255 255 255 / .72); border-radius: 999px; padding: 4px; width: 100%;
 }
 .bodygraph-container .seg { border: 0; background: var(--surface); min-height: 0; }
 .bodygraph-view-toggle { max-width: 240px; order: -1; }
