@@ -136,8 +136,19 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         maxWidth: '460px',
         zIndex: 35,
         background: 'linear-gradient(145deg, #161A23, #1E2430)',
-        border: '1.5px solid rgba(255, 255, 255, 0.08)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.1)',
+        border: isFinished
+          ? '1.5px solid rgba(95, 214, 138, 0.4)'
+          : remainingSeconds <= 5 && !isPaused
+            ? '1.5px solid rgba(0, 229, 255, 0.45)'
+            : '1.5px solid rgba(255, 255, 255, 0.08)',
+        boxShadow: isFinished
+          ? '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 28px rgba(95, 214, 138, 0.35)'
+          : remainingSeconds <= 5 && !isPaused
+            ? '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 229, 255, 0.4)'
+            : '0 8px 32px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 229, 255, 0.1)',
+        animation: remainingSeconds <= 5 && !isPaused && !isFinished
+          ? 'urgentPulse 1s infinite ease-in-out'
+          : undefined,
         borderRadius: '16px',
         padding: '12px 16px',
         display: 'flex',
@@ -145,6 +156,7 @@ export const RestTimer: React.FC<RestTimerProps> = ({
         justifyContent: 'space-between',
         gap: '12px',
         backdropFilter: 'blur(16px)',
+        transition: 'border-color 300ms ease, box-shadow 300ms ease',
       }}
     >
       {/* Circular progress & time */}

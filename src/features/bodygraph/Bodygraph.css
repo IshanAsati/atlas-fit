@@ -23,7 +23,7 @@
   width: min(72vw, 240px);
   height: 380px;
   transform-style: preserve-3d;
-  transition: transform 500ms cubic-bezier(0.25, 1, 0.5, 1);
+  transition: transform 600ms cubic-bezier(0.34, 1.35, 0.64, 1);
 }
 
 .bodygraph-flipper.is-back {
@@ -55,12 +55,12 @@
 .bodyfig .mg {
   cursor: pointer;
   outline: none;
-  transition: fill var(--ease, 220ms ease), stroke var(--ease, 220ms ease), opacity 180ms ease, filter 220ms ease;
+  transition: fill 220ms ease, stroke 220ms ease, opacity 180ms ease, filter 220ms ease;
 }
 
 .bodyfig .mg:hover {
-  opacity: 0.9;
-  filter: brightness(1.15);
+  opacity: 0.95;
+  filter: brightness(1.2) drop-shadow(0 0 6px rgba(0, 229, 255, 0.45));
 }
 
 .bodyfig .mg:focus-visible {
@@ -71,7 +71,16 @@
 .bodyfig .mg.selected {
   stroke: #ffffff !important;
   stroke-width: 2.5px !important;
-  filter: drop-shadow(0 0 10px rgba(0, 229, 255, 0.9));
+  animation: selectedMuscleGlow 1.8s infinite ease-in-out;
+}
+
+@keyframes selectedMuscleGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(0, 229, 255, 1));
+  }
 }
 
 /* Compact Figure mode for thumbnails */

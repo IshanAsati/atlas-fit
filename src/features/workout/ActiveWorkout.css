@@ -378,7 +378,20 @@
   background: #5fd68a;
   border-color: #5fd68a;
   color: #0c2317;
-  box-shadow: 0 0 12px rgba(95, 214, 138, 0.35);
+  box-shadow: 0 0 16px rgba(95, 214, 138, 0.5);
+  animation: checkmarkPop 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0.75);
+  }
+  55% {
+    transform: scale(1.18);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 /* Effort pills */
@@ -525,6 +538,7 @@
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  animation: modalOverlayFadeIn 220ms ease-out;
 }
 
 .modal-sheet {
@@ -540,6 +554,11 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  animation: modalSheetSlideUp 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.rest-timer-dock {
+  animation: dockFloatIn 340ms cubic-bezier(0.34, 1.35, 0.64, 1);
 }
 
 .modal-header {
@@ -598,4 +617,43 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-top: 2px;
+}
+
+/* Animations & Keyframes */
+@keyframes modalOverlayFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSheetSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dockFloatIn {
+  from {
+    transform: translate(-50%, 48px);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+@keyframes urgentPulse {
+  0%, 100% {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 229, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 8px 36px rgba(0, 0, 0, 0.9), 0 0 28px rgba(0, 229, 255, 0.7);
+  }
 }

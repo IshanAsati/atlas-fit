@@ -332,6 +332,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
+                          transition: 'transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), background 200ms ease, border-color 200ms ease',
                         }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
@@ -356,6 +357,7 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({
                           alignItems: 'center',
                           justifyContent: 'center',
                           cursor: 'pointer',
+                          transition: 'transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), background 200ms ease, border-color 200ms ease',
                         }}
                       >
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

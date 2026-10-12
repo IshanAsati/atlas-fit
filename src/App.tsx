@@ -120,6 +120,7 @@ export function App() {
       {toastMessage && (
         <aside
           aria-live="polite"
+          className="toast-alert"
           style={{
             position: 'fixed',
             top: 16,

@@ -469,7 +469,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       <main className="view" style={{ flex: 1, paddingBottom: 40 }}>
         {/* ================= STEP 1: DISPLAY NAME ================= */}
         {step === 1 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Welcome to Atlas Fit</h1>
               <p className="sub">
@@ -510,7 +510,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 2: MAIN OBJECTIVE ================= */}
         {step === 2 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Main Objective</h1>
               <p className="sub">
@@ -552,7 +552,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 3: TRAINING EXPERIENCE ================= */}
         {step === 3 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Training Experience</h1>
               <p className="sub">
@@ -594,7 +594,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 4: WHERE DO YOU TRAIN? ================= */}
         {step === 4 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Where do you train?</h1>
               <p className="sub">
@@ -636,7 +636,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 5: EQUIPMENT INVENTORY ================= */}
         {step === 5 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Equipment Inventory</h1>
               <p className="sub">
@@ -777,7 +777,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 6: TRAINING DAYS PER WEEK ================= */}
         {step === 6 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Training Days</h1>
               <p className="sub">
@@ -819,7 +819,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 7: SESSION LENGTH ================= */}
         {step === 7 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Session Length</h1>
               <p className="sub">
@@ -861,7 +861,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 8: PREFERRED WEEKDAYS ================= */}
         {step === 8 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Preferred Weekdays</h1>
               <p className="sub">
@@ -913,7 +913,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 9: MOVEMENT COMFORT & RESTRICTIONS ================= */}
         {step === 9 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Movement Comfort</h1>
               <p className="sub">
@@ -982,7 +982,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 10: OTHER PHYSICAL ACTIVITIES ================= */}
         {step === 10 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div>
               <h1 className="h-hero">Other Activities</h1>
               <p className="sub">
@@ -1021,7 +1021,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
         {/* ================= STEP 11: PROPOSED PLAN PREVIEW ================= */}
         {step === 11 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="step-container">
             <div className="banner" style={{ borderLeftColor: 'var(--action)' }}>
               <strong>Adaptive Plan Generated</strong> · Engineered deterministically to your schedule & equipment.
             </div>
