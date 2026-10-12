@@ -1,181 +1,57 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BodygraphScreen } from './BodygraphScreen';
 import * as db from '../../data/db';
-import * as backup from '../../data/backup';
 import type { WorkoutSession } from '../../data/types';
 
-// Mock recharts ResponsiveContainer to render children in jsdom
-vi.mock('recharts', async () => {
-  const actual = await vi.importActual<typeof import('recharts')>('recharts');
-  return {
-    ...actual,
-    ResponsiveContainer: ({ children }: { children: React.ReactNode }) => (
-      <div data-testid="responsive-container" style={{ width: 400, height: 230 }}>
-        {children}
-      </div>
-    ),
-  };
-});
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+const session: WorkoutSession = { id: 'completed', title: 'Workout', location: 'home', state: 'done',
+  startedAt: Date.now() - 3600000, endedAt: Date.now(), items: [{ exerciseId: 'push-up', sets: [
+    { done: true, reps: 10, loadKg: 0 }, { done: true, reps: 8, loadKg: 0 },
+    { done: true, reps: 5, loadKg: 0, kind: 'warmup' },
+  ] }] };
 
-const mockSession: WorkoutSession = {
-  id: 'session-101',
-  title: 'Full Body Test Session',
-  startedAt: Date.now() - 3600000,
-  endedAt: Date.now(),
-  location: 'gym',
-  state: 'done',
-  items: [
-    {
-      exerciseId: 'push-up',
-      sets: [
-        { reps: 10, loadKg: 0, done: true, effort: 2 },
-        { reps: 10, loadKg: 0, done: true, effort: 2 },
-      ],
-    },
-  ],
-};
-
-describe('BodygraphScreen Component (§4.6, §9)', () => {
-  beforeEach(() => {
-    vi.spyOn(db, 'getWorkoutSessions').mockResolvedValue([mockSession]);
-    vi.spyOn(backup, 'downloadBackupFile').mockResolvedValue();
-    vi.spyOn(backup, 'importBackupFile').mockResolvedValue({ success: true });
+describe('BodygraphScreen', () => {
+  it('starts with a compact map and collapsed picker, without backup or duplicate history UI', () => {
+    render(<BodygraphScreen sessions={[]} />);
+    expect(screen.getByRole('button', { name: 'Exercise targets' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Push-up')).toBeDefined();
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(screen.queryByText(/backup/i)).toBeNull();
+    expect(screen.queryByText(/history log/i)).toBeNull();
+    expect(screen.getByRole('region', { name: /Interactive bodygraph/ })).toBeDefined();
   });
 
-  afterEach(() => {
-    cleanup();
-    vi.restoreAllMocks();
+  it('searches and changes the map without calling the detail-modal callback', () => {
+    const select = vi.fn();
+    render(<BodygraphScreen sessions={[]} onSelectExercise={select} />);
+    fireEvent.click(screen.getByRole('button', { name: /Showing targets for/ }));
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'bodyweight squat' } });
+    fireEvent.click(screen.getByRole('button', { name: /Bodyweight Squat/ }));
+    expect(screen.queryByRole('searchbox')).toBeNull();
+    expect(select).not.toHaveBeenCalled();
+    expect(document.getElementById('quads')?.getAttribute('fill')).toContain('--muscle-primary');
   });
 
-  it('renders mode switcher pills: Mode A (Targets) vs Mode B (Activity)', async () => {
+  it('reports actual sets independently of overlapping target counts and optional supporting estimates', () => {
+    render(<BodygraphScreen sessions={[session]} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Training activity' }));
+    expect(screen.getByText('2 completed working sets in this period')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Last 30 days' })).toBeDefined();
+    expect(screen.getByText(/counts overlap/)).toBeDefined();
+    expect(screen.queryByText('Supporting estimate')).toBeNull();
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(screen.getByText('Supporting estimate')).toBeDefined();
+    expect(screen.getByText(/0.5 ×/)).toBeDefined();
+  });
+
+  it('does not silently present a database failure as empty history', async () => {
+    vi.spyOn(db, 'getWorkoutSessions').mockRejectedValue(new Error('Blocked'));
     render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Exercise Targets \(Mode A\)/i })).toBeDefined();
-      expect(screen.getByRole('button', { name: /Training Activity Heatmap \(Mode B\)/i })).toBeDefined();
-    });
-
-    // Default is Mode A
-    expect(screen.getByRole('button', { name: /Exercise Targets \(Mode A\)/i }).getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('allows searching and picking an exercise in Mode A', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Search exercise/i)).toBeDefined();
-    });
-
-    const input = screen.getByPlaceholderText(/Search exercise/i);
-    fireEvent.change(input, { target: { value: 'squat' } });
-
-    await waitFor(() => {
-      // Autocomplete list shows matches
-      expect(screen.getByRole('button', { name: /Bodyweight Squat/i })).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Bodyweight Squat/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Bodyweight Squat')).toBeDefined();
-      expect(screen.getByText('Quads')).toBeDefined();
-    });
-  });
-
-  it('switches to Mode B and displays time window filters and activity labels', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Training Activity Heatmap/i })).toBeDefined();
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: /Training Activity Heatmap/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Activity Time Window')).toBeDefined();
-      expect(screen.getAllByRole('button', { name: 'Last 7 Days' })[0]).toBeDefined();
-      expect(screen.getAllByRole('button', { name: 'Last 30 Days' })[0]).toBeDefined();
-      expect(screen.getAllByRole('button', { name: 'All Time' })[0]).toBeDefined();
-      expect(screen.getByText(/Training activity estimate based on logged sets/i)).toBeDefined();
-    });
-  });
-
-  it('renders interactive 3D Bodygraph with Front and Back view flip toggle', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Front View' })).toBeDefined();
-      expect(screen.getByRole('button', { name: 'Back View' })).toBeDefined();
-    });
-
-    // Toggle to Back view
-    fireEvent.click(screen.getByRole('button', { name: 'Back View' }));
-    expect(screen.getByRole('button', { name: 'Back View' }).getAttribute('aria-pressed')).toBe('true');
-  });
-
-  it('renders Weekly Volume Chart section', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Muscle Volume Distribution')).toBeDefined();
-      expect(screen.getByText(/Completed working sets per muscle group/i)).toBeDefined();
-      expect(screen.getByTestId('responsive-container')).toBeDefined();
-    });
-  });
-
-  it('renders expandable workout history log with completed session details', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Workout History Log')).toBeDefined();
-      expect(screen.getByText('Full Body Test Session')).toBeDefined();
-      expect(screen.getByText(/2 sets/i)).toBeDefined();
-    });
-
-    // Expand the session
-    const sessionBtn = screen.getByRole('button', { name: /Full Body Test Session/i });
-    fireEvent.click(sessionBtn);
-
-    await waitFor(() => {
-      expect(screen.getByText(/Set 1: 10 reps/i)).toBeDefined();
-      expect(screen.getByText(/Set 2: 10 reps/i)).toBeDefined();
-    });
-  });
-
-  it('handles Export Backup and Restore Backup with confirmation dialog (§9)', async () => {
-    render(<BodygraphScreen />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Data Backup & Restore')).toBeDefined();
-      expect(screen.getByRole('button', { name: /Export Backup \(JSON\)/i })).toBeDefined();
-      expect(screen.getByRole('button', { name: /Restore Backup/i })).toBeDefined();
-    });
-
-    // Test Export
-    fireEvent.click(screen.getByRole('button', { name: /Export Backup \(JSON\)/i }));
-    await waitFor(() => {
-      expect(backup.downloadBackupFile).toHaveBeenCalledTimes(1);
-    });
-
-    // Test file input change triggers restore confirmation dialog
-    const file = new File(['{"schema": 1}'], 'atlas-backup.json', { type: 'application/json' });
-    const hiddenFileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-    expect(hiddenFileInput).toBeDefined();
-
-    fireEvent.change(hiddenFileInput, { target: { files: [file] } });
-
-    await waitFor(() => {
-      expect(screen.getByText('Confirm Backup Restore')).toBeDefined();
-      expect(screen.getByText(/Restoring/i)).toBeDefined();
-      expect(screen.getByRole('button', { name: 'Confirm & Restore' })).toBeDefined();
-    });
-
-    // Confirm restore
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm & Restore' }));
-    await waitFor(() => {
-      expect(backup.importBackupFile).toHaveBeenCalledWith(file);
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Training activity' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeDefined());
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeDefined();
+    expect(screen.queryByText(/0 completed working sets/)).toBeNull();
   });
 });

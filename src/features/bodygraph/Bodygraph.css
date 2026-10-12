@@ -1,211 +1,99 @@
-/* Bodygraph styles with 3D flip animation (§4.6, §5.1, §5.2) — Zero Purple */
-
-.bodygraph-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
+.bodygraph-container, .bodygraph-screen {
+  color-scheme: dark;
+  --muscle-primary: #E86672;
+  --muscle-secondary: #A88BDA;
+  --muscle-neutral: #DADFD5;
+  --muscle-activity-low: #C0CDAA;
+  --muscle-activity-mid: #8EA976;
+  --muscle-activity-high: #54794B;
+  --bodygraph-seam: #F3F5ED;
+  --bodygraph-outline: #BAC6B5;
+  --graph-ink: var(--text);
+  --graph-paper: var(--bg);
+  --graph-lime: var(--action);
+  --graph-muted: var(--text-2);
+  --graph-line: var(--hairline);
+  color: var(--graph-ink);
 }
-
-/* 3D Flip Card Container */
-.bodygraph-card {
-  perspective: 1200px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 380px;
+.bodygraph-screen { padding: 12px 16px 24px; background: var(--graph-paper); }
+.bodygraph-container { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.bodygraph-card { display: flex; justify-content: center; width: 100%; }
+.bodygraph-flipper { width: 180px; height: 300px; }
+.bodygraph-face { width: 100%; height: 100%; }
+.bodyfig { display: block; width: 100%; height: 100%; }
+.bodyfig.compact { max-width: 160px; height: auto; }
+.bodyfig .mg { cursor: pointer; }
+.bodyfig .mg:hover { stroke: var(--graph-ink); }
+.bodyfig .mg:focus-visible, .bodyfig .mg.selected { outline: none; stroke: var(--graph-ink); stroke-width: 2.5px; }
+.bodygraph-view-toggle, .bodygraph-mode-toggle, .bodygraph-screen-seg, .bodygraph-window-seg {
+  display: flex; gap: 4px; background: var(--surface); border-radius: 14px; padding: 4px; width: 100%;
 }
-
-.bodygraph-flipper {
-  position: relative;
-  width: min(72vw, 240px);
-  height: 380px;
-  transform-style: preserve-3d;
-  transition: transform 600ms cubic-bezier(0.34, 1.35, 0.64, 1);
+.bodygraph-container .seg { border: 0; background: var(--surface); min-height: 0; }
+.bodygraph-view-toggle { max-width: 240px; order: -1; }
+.bodygraph-screen-seg { margin-bottom: 12px; }
+.bodygraph-container button, .bodygraph-screen button, .bodygraph-muscle-list summary {
+  font: inherit; cursor: pointer; color: var(--graph-ink); min-height: 44px;
 }
-
-.bodygraph-flipper.is-back {
-  transform: rotateY(180deg);
+.bodygraph-container .seg button, .bodygraph-screen-seg button, .bodygraph-window-seg button {
+  flex: 1; border: 0; padding: 8px; border-radius: 10px; background: transparent; font-size: 13px; font-weight: 650;
 }
-
-.bodygraph-face {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+.bodygraph-container .seg button[aria-pressed='true'], .bodygraph-screen-seg button[aria-pressed='true'], .bodygraph-window-seg button[aria-pressed='true'] {
+  background: var(--surface-3); color: var(--text); box-shadow: none;
 }
-
-.bodygraph-face-front {
-  transform: rotateY(0deg);
+.bodygraph-screen button:focus-visible, .bodygraph-container button:focus-visible,
+.bodygraph-screen input:focus-visible, .bodygraph-container select:focus-visible, .bodygraph-muscle-list summary:focus-visible {
+  outline: 2px solid var(--action); outline-offset: 3px;
 }
+.bodygraph-target-picker { position: relative; margin-bottom: 14px; }
+.bodygraph-selected-exercise { width: 100%; padding: 8px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 0; background: transparent; text-align: left; }
+.bodygraph-selected-exercise strong, .bodygraph-selected-exercise small { display: block; }
+.bodygraph-selected-exercise small { font-size: 12px; color: var(--graph-muted); margin-bottom: 3px; }
+.bodygraph-selected-exercise strong { font-size: 18px; }
+.bodygraph-change { background: var(--graph-lime); color: var(--action-ink); padding: 10px 12px; border-radius: 10px; font-size: 13px; font-weight: 650; }
+.bodygraph-search-panel { position: absolute; inset: 100% 0 auto; z-index: 5; padding: 12px; background: var(--surface); border-radius: 14px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); }
+.bodygraph-search-panel label { font-size: 13px; font-weight: 650; }
+.bodygraph-search-panel input, .bodygraph-picker select { width: 100%; min-height: 44px; padding: 10px; margin-top: 6px; border: 1px solid var(--graph-line); border-radius: 10px; background: var(--graph-paper); color: var(--graph-ink); font: inherit; }
+.bodygraph-search-panel input::placeholder { color: var(--graph-muted); }
+.bodygraph-search-results { max-height: 240px; overflow-y: auto; margin-top: 8px; }
+.bodygraph-search-results button { width: 100%; padding: 12px 4px; border: 0; border-bottom: 1px solid var(--graph-line); background: transparent; text-align: left; }
+.bodygraph-search-results strong, .bodygraph-search-results small { display: block; }
+.bodygraph-search-results small { color: var(--graph-muted); margin-top: 4px; }
+.bodygraph-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; }
+.bodygraph-legend-item { display: flex; align-items: center; gap: 6px; }
+.bodygraph-legend-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #183D3230; }
+.bodygraph-picker { width: 100%; }
+.bodygraph-muscle-list { width: 100%; margin-top: 4px; }
+.bodygraph-muscle-list summary { display: list-item; padding: 12px 0; font-size: 13px; font-weight: 650; }
+.bodygraph-muscle-buttons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.bodygraph-muscle-buttons button { border: 1px solid var(--graph-line); background: transparent; border-radius: 10px; font-size: 12px; }
+.bodygraph-muscle-buttons button[aria-pressed='true'] { background: var(--graph-lime); color: var(--action-ink); }
+.bodygraph-explanation, .bodygraph-activity-controls p, .bodygraph-empty p { font-size: 12px; line-height: 1.55; color: var(--graph-muted); margin: 8px 0; }
+.bodygraph-activity-controls { margin-bottom: 12px; }
+.bodygraph-activity-breakdown { margin-top: 24px; border-top: 1px solid var(--graph-line); padding-top: 20px; }
+.bodygraph-activity-breakdown h2 { font-size: 19px; margin: 0 0 12px; }
+.bodygraph-activity-breakdown button { background: var(--graph-lime); color: var(--action-ink); border: 0; padding: 10px 14px; border-radius: 10px; }
+.bodygraph-volume-head, .bodygraph-volume-row { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--graph-line); font-size: 13px; font-variant-numeric: tabular-nums; }
+.bodygraph-volume-head { color: var(--graph-muted); font-size: 11px; }
+.bodygraph-volume-row > :first-child, .bodygraph-volume-head > :first-child { flex: 1; }
+.bodygraph-volume-head > :not(:first-child), .bodygraph-volume-row > :not(:first-child) { width: 70px; text-align: right; }
+.bodygraph-secondary-option { display: flex; gap: 8px; align-items: center; min-height: 44px; font-size: 13px; }
+.bodygraph-secondary-option input { accent-color: var(--graph-ink); width: 18px; height: 18px; }
+.bodygraph-empty { padding: 12px 0; }
+.bodygraph-container ::selection, .bodygraph-screen ::selection { background: var(--graph-lime); color: var(--action-ink); }
+.bodygraph-container, .bodygraph-screen { accent-color: var(--action); caret-color: var(--action); scrollbar-color: var(--graph-muted) var(--graph-paper); }
+@media (max-width: 360px) { .bodygraph-flipper { width: 168px; height: 280px; } }
 
-.bodygraph-face-back {
-  transform: rotateY(180deg);
-}
-
-/* Vector Muscle Groups Interaction */
-.bodyfig .mg {
-  cursor: pointer;
-  outline: none;
-  transition: fill 220ms ease, stroke 220ms ease, opacity 180ms ease, filter 220ms ease;
-}
-
-.bodyfig .mg:hover {
-  opacity: 0.95;
-  filter: brightness(1.2) drop-shadow(0 0 6px rgba(0, 229, 255, 0.45));
-}
-
-.bodyfig .mg:focus-visible {
-  outline: 2px solid var(--action, #00e5ff);
-  outline-offset: 2px;
-}
-
-.bodyfig .mg.selected {
-  stroke: #ffffff !important;
-  stroke-width: 2.5px !important;
-  animation: selectedMuscleGlow 1.8s infinite ease-in-out;
-}
-
-@keyframes selectedMuscleGlow {
-  0%, 100% {
-    filter: drop-shadow(0 0 6px rgba(0, 229, 255, 0.6));
-  }
-  50% {
-    filter: drop-shadow(0 0 16px rgba(0, 229, 255, 1));
-  }
-}
-
-/* Compact Figure mode for thumbnails */
-.bodyfig.compact {
-  width: 100%;
-  max-width: 160px;
-  height: auto;
-}
-
-/* Controls Bar */
-.bodygraph-controls {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.bodygraph-view-toggle {
-  width: 100%;
-  max-width: 280px;
-}
-
-.bodygraph-mode-toggle {
-  width: 100%;
-  max-width: 340px;
-}
-
-/* Legend */
-.bodygraph-legend {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--text-2, #94a3b8);
-  padding: 8px 14px;
-  background: var(--surface, #161a23);
-  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.08));
-  border-radius: var(--radius-s, 10px);
-  width: 100%;
-  max-width: 380px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-}
-
-.bodygraph-legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.bodygraph-legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  box-shadow: 0 0 6px currentColor;
-}
-
-/* Exercise selector for Mode A */
-.bodygraph-picker {
-  width: 100%;
-  max-width: 380px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.bodygraph-picker label {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-2, #94a3b8);
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-}
-
-.bodygraph-picker select {
-  width: 100%;
-  background: var(--surface, #161a23);
-  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.08));
-  color: var(--text, #f8fafc);
-  font-size: 14px;
-  padding: 10px 14px;
-  border-radius: var(--radius-s, 10px);
-  outline: none;
-  font-family: inherit;
-  cursor: pointer;
-  transition: border-color var(--ease);
-}
-
-.bodygraph-picker select:focus {
-  border-color: var(--action, #00e5ff);
-  box-shadow: 0 0 0 2px rgba(0, 229, 255, 0.2);
-}
-
-/* Mode B window selector */
-.bodygraph-window-seg {
-  display: flex;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.bodygraph-window-seg button {
-  appearance: none;
-  background: var(--surface, #161a23);
-  border: 1px solid var(--hairline, rgba(255, 255, 255, 0.08));
-  color: var(--text-2, #94a3b8);
-  font-size: 12px;
-  font-weight: 650;
-  padding: 6px 14px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all var(--ease);
-}
-
-.bodygraph-window-seg button[aria-pressed='true'] {
-  background: rgba(0, 229, 255, 0.14);
-  color: var(--action, #00e5ff);
-  border-color: var(--action, #00e5ff);
-  box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
-}
-
-/* Reduced motion accessibility */
-@media (prefers-reduced-motion: reduce) {
-  .bodygraph-flipper {
-    transition-duration: 1ms !important;
-  }
-}
+/* Inspector shares the application's matte forest surface. */
+.muscle-drawer { background: var(--bg-raised); color: var(--text); padding: 20px; }
+.muscle-drawer-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.muscle-drawer h2 { margin: 0; font-size: 23px; }
+.muscle-drawer h3 { margin: 22px 0 10px; font-size: 17px; }
+.muscle-drawer p { font-size: 14px; line-height: 1.6; color: var(--text-2); }
+.muscle-drawer-close { border: 1px solid var(--hairline); background: transparent; border-radius: 10px; min-width: 44px; }
+.muscle-drawer-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 16px 0; border-block: 1px solid var(--hairline); }
+.muscle-drawer-stats strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
+.muscle-drawer-stats span { font-size: 12px; }
+.muscle-drawer-exercises { padding: 0; list-style: none; }
+.muscle-drawer-exercises li { border-bottom: 1px solid var(--hairline); }
+.muscle-drawer-exercises button { display: flex; justify-content: space-between; width: 100%; gap: 12px; background: transparent; border: 0; text-align: left; padding: 12px 0; }
+.muscle-drawer-exercises small { display: block; color: var(--text-2); margin-top: 4px; }

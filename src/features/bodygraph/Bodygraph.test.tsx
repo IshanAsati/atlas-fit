@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
-import { BodygraphFigure, getMuscleFillColor } from './BodygraphFigure';
+import { BodygraphFigure } from './BodygraphFigure';
+import { getMuscleFillColor } from './muscleColors';
 import { Bodygraph } from './Bodygraph';
 import { MuscleDrawer } from './MuscleDrawer';
 import type { WorkoutSession } from '../../data/types';
@@ -13,16 +14,16 @@ afterEach(() => {
 
 describe('getMuscleFillColor', () => {
   it('returns exact spec colors for classification and heatmap values', () => {
-    expect(getMuscleFillColor('primary')).toBe('#FF4757');
-    expect(getMuscleFillColor('secondary')).toBe('#00D2FF');
-    expect(getMuscleFillColor('neutral')).toBe('#202633');
-    expect(getMuscleFillColor(undefined)).toBe('#202633');
+    expect(getMuscleFillColor('primary')).toBe('var(--muscle-primary, #E86672)');
+    expect(getMuscleFillColor('secondary')).toBe('var(--muscle-secondary, #A88BDA)');
+    expect(getMuscleFillColor('neutral')).toBe('var(--muscle-neutral, #DADFD5)');
+    expect(getMuscleFillColor(undefined)).toBe('var(--muscle-neutral, #DADFD5)');
 
     // Heatmap numbers
-    expect(getMuscleFillColor(0)).toBe('#202633');
-    expect(getMuscleFillColor(2)).toBe('#123854');
-    expect(getMuscleFillColor(5)).toBe('#0284c7');
-    expect(getMuscleFillColor(10)).toBe('#00e5ff');
+    expect(getMuscleFillColor(0)).toBe('var(--muscle-neutral, #DADFD5)');
+    expect(getMuscleFillColor(2)).toBe('var(--muscle-activity-low, #C0CDAA)');
+    expect(getMuscleFillColor(5)).toBe('var(--muscle-activity-mid, #8EA976)');
+    expect(getMuscleFillColor(10)).toBe('var(--muscle-activity-high, #54794B)');
   });
 });
 
@@ -47,13 +48,13 @@ describe('BodygraphFigure', () => {
     }
 
     const chestEl = document.getElementById('chest');
-    expect(chestEl?.getAttribute('fill')).toBe('#FF4757');
+    expect(chestEl?.getAttribute('fill')).toBe('var(--muscle-primary, #E86672)');
 
     const bicepsEl = document.getElementById('biceps');
-    expect(bicepsEl?.getAttribute('fill')).toBe('#00D2FF');
+    expect(bicepsEl?.getAttribute('fill')).toBe('var(--muscle-secondary, #A88BDA)');
 
     const absEl = document.getElementById('abs');
-    expect(absEl?.getAttribute('fill')).toBe('#202633');
+    expect(absEl?.getAttribute('fill')).toBe('var(--muscle-neutral, #DADFD5)');
   });
 
   it('renders all back canonical muscles with proper id and className="mg"', () => {
@@ -73,10 +74,10 @@ describe('BodygraphFigure', () => {
     }
 
     const latsEl = document.getElementById('lats');
-    expect(latsEl?.getAttribute('fill')).toBe('#0284c7'); // 5 sets -> electric sky
+    expect(latsEl?.getAttribute('fill')).toBe('var(--muscle-activity-mid, #8EA976)');
 
     const trapsEl = document.getElementById('traps');
-    expect(trapsEl?.getAttribute('fill')).toBe('#FF4757');
+    expect(trapsEl?.getAttribute('fill')).toBe('var(--muscle-primary, #E86672)');
   });
 
   it('handles click and keyboard Enter on muscle elements', () => {
@@ -170,11 +171,11 @@ describe('MuscleDrawer', () => {
 });
 
 describe('Bodygraph', () => {
-  it('renders interactive flipper with front and back views, toggles perspective', () => {
+  it('switches the visible view without duplicate IDs or hidden muscle tab stops', () => {
     render(<Bodygraph selectedExercise="push-up" />);
 
     // Flipper region exists
-    const flipper = screen.getByRole('region', { name: /interactive 3d bodygraph/i });
+    const flipper = screen.getByRole('region', { name: /interactive bodygraph/i });
     expect(flipper).toBeDefined();
     expect(flipper.getAttribute('class')).not.toContain('is-back');
 
@@ -183,6 +184,9 @@ describe('Bodygraph', () => {
     fireEvent.click(backBtn);
 
     expect(flipper.getAttribute('class')).toContain('is-back');
+    expect(document.querySelectorAll('#side_delts')).toHaveLength(1);
+    expect(document.querySelector('#chest')).toBeNull();
+    expect(document.querySelector('#lats')).not.toBeNull();
   });
 
   it('opens MuscleDrawer when a muscle is clicked in Bodygraph', () => {
@@ -195,5 +199,19 @@ describe('Bodygraph', () => {
 
     // Drawer should open
     expect(screen.getByText('Chest (pectorals)')).toBeDefined();
+  });
+
+  it('has a list alternative for small muscle regions', () => {
+    render(<Bodygraph sessions={[]} selectedExercise="push-up" />);
+    fireEvent.click(screen.getByText('Choose a muscle from a list'));
+    fireEvent.click(screen.getByRole('button', { name: 'Lower back' }));
+    expect(screen.getByRole('dialog', { name: 'Spinal erectors (lower back)' })).toBeDefined();
+  });
+
+  it('does not launch exercise details from its target picker', () => {
+    const onSelectExercise = vi.fn();
+    render(<Bodygraph sessions={[]} onSelectExercise={onSelectExercise} />);
+    fireEvent.change(screen.getByLabelText('Inspect Exercise Targets'), { target: { value: 'bodyweight-squat' } });
+    expect(onSelectExercise).not.toHaveBeenCalled();
   });
 });

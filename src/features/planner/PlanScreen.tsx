@@ -1,468 +1,283 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import type { Plan, PlanDay, UserProfile, LocationType, WorkoutSession } from '../../data/types';
-import { getUserProfile, saveUserProfile, getLatestPlan, savePlan, getWorkoutSessions } from '../../data/db';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import type { Exercise, ExerciseFeedback, LocationType, Plan, PlanDay, PlannedExercise, Routine, UserProfile, WorkoutSession } from '../../data/types';
+import { db, getActiveWorkout, getAllFeedback, getLatestPlan, getUserProfile, getWorkoutSessions, savePlan, saveUserProfile } from '../../data/db';
 import { CATALOG, CATALOG_BY_ID, findSubstitutes, getExerciseImageUrl } from '../../data/catalog';
-import { generatePlan, swapExerciseInPlan } from './engine';
+import { deleteRoutine, getRoutines, routineFromDay, saveRoutine, sessionFromRoutine } from '../../data/training';
+import { downloadExerciseMedia } from '../../data/media';
 import { EQUIPMENT_BY_ID } from '../../data/equipment';
+import { generatePlan, swapExerciseInPlan } from './engine';
+import { isExerciseEligible } from './validator';
+import './PlanScreen.css';
 
 interface PlanScreenProps {
   onStartSession: (session: WorkoutSession) => void;
   onSelectExercise?: (exerciseId: string) => void;
 }
 
-export const PlanScreen: React.FC<PlanScreenProps> = ({
-  onStartSession,
-  onSelectExercise,
-}) => {
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const LOCATIONS: LocationType[] = ['home', 'gym', 'travel'];
+const locationLabel = (location: LocationType) => location[0].toUpperCase() + location.slice(1);
+const exerciseName = (id: string) => CATALOG_BY_ID[id]?.name ?? id;
+const copyRoutine = (routine: Routine): Routine => ({ ...routine, exercises: routine.exercises.map((exercise) => ({ ...exercise })) });
+
+function orderedWeekdays(days: string[]): string[] {
+  return WEEKDAYS.filter((day) => days.some((value) => value.slice(0, 3).toLowerCase() === day.toLowerCase()));
+}
+
+function moveItem<T>(items: T[], index: number, offset: number): T[] {
+  const next = [...items];
+  const destination = index + offset;
+  if (destination < 0 || destination >= items.length) return next;
+  [next[index], next[destination]] = [next[destination], next[index]];
+  return next;
+}
+
+function Thumbnail({ exerciseId }: { exerciseId: string }) {
+  const exercise = CATALOG_BY_ID[exerciseId];
+  const src = exercise ? getExerciseImageUrl(exercise, 'start') : null;
+  const [failed, setFailed] = useState(false);
+  return <span className="plan-thumbnail" aria-hidden="true">{src && !failed ? <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} /> : <span className="plan-thumbnail-fallback">No image</span>}</span>;
+}
+
+function ExerciseSummary({ exercise, onSelectExercise }: { exercise: PlannedExercise; onSelectExercise?: (id: string) => void }) {
+  const content = <><Thumbnail key={exercise.exerciseId} exerciseId={exercise.exerciseId} /><span className="plan-exercise-name">{exerciseName(exercise.exerciseId)}</span></>;
+  return <div className="plan-exercise-summary">
+    {onSelectExercise ? <button type="button" className="plan-exercise-link" onClick={() => onSelectExercise(exercise.exerciseId)} aria-label={`View ${exerciseName(exercise.exerciseId)}`}>{content}</button> : <div className="plan-exercise-link">{content}</div>}
+    <p className="plan-prescription">{exercise.sets} sets · {exercise.reps} reps · {exercise.restSec}s rest</p>
+    {exercise.reason && <details className="plan-exercise-reason"><summary>Why this exercise?</summary><p>{exercise.reason}</p></details>}
+  </div>;
+}
+
+export const PlanScreen: React.FC<PlanScreenProps> = ({ onStartSession, onSelectExercise }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [draft, setDraft] = useState<UserProfile | null>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [history, setHistory] = useState<WorkoutSession[]>([]);
+  const [feedback, setFeedback] = useState<ExerciseFeedback[]>([]);
+  const [activeWorkout, setActiveWorkout] = useState<WorkoutSession | null>(null);
+  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [routinesError, setRoutinesError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showExplanation, setShowExplanation] = useState(false);
-  const [swapTarget, setSwapTarget] = useState<{ dayId: string; exerciseId: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const [view, setView] = useState<'schedule' | 'routines'>('schedule');
+  const [editor, setEditor] = useState<Routine | null>(null);
+  const [editorBaseline, setEditorBaseline] = useState<Routine | null>(null);
+  const editorHeading = useRef<HTMLHeadingElement>(null);
+  const swapHeading = useRef<HTMLHeadingElement>(null);
+  const swapTrigger = useRef<HTMLElement | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [swapTarget, setSwapTarget] = useState<{ dayId?: string; index: number; exerciseId: string } | null>(null);
+  const [swapReason, setSwapReason] = useState('preference');
+  const [unavailableEquipment, setUnavailableEquipment] = useState<string[]>([]);
+  const [addExerciseId, setAddExerciseId] = useState('');
+  const [todayDate] = useState(() => new Date());
+  const editorDirty = Boolean(editor && JSON.stringify(editor) !== JSON.stringify(editorBaseline));
 
-  // Load profile and plan on mount
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const userProf = await getUserProfile();
-        setProfile(userProf);
-
-        let currentPlan = await getLatestPlan();
-        if (!currentPlan) {
-          const sessions = await getWorkoutSessions();
-          currentPlan = generatePlan(userProf, CATALOG, sessions);
-          await savePlan(currentPlan);
-        }
-        setPlan(currentPlan);
-      } catch (err) {
-        console.error('Failed to load plan data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  // Handle location switch
-  const handleLocationSwitch = async (newLocation: LocationType) => {
-    if (!profile) return;
-    const updatedProf: UserProfile = { ...profile, activeLocation: newLocation };
-    setProfile(updatedProf);
-    await saveUserProfile(updatedProf);
-
-    // Regenerate plan for new location
-    const sessions = await getWorkoutSessions();
-    const newPlan = generatePlan(updatedProf, CATALOG, sessions, {
-      existingPlan: plan ?? undefined,
-      planId: `plan-${newLocation}-${Date.now()}`,
-      createdAt: Date.now(),
-    });
-    setPlan(newPlan);
-    await savePlan(newPlan);
-  };
-
-  // Handle plan regeneration
-  const handleRegenerate = async () => {
-    if (!profile) return;
-    const sessions = await getWorkoutSessions();
-    const newPlan = generatePlan(profile, CATALOG, sessions, {
-      existingPlan: plan ?? undefined,
-      planId: `plan-${profile.activeLocation}-${Date.now()}`,
-      createdAt: Date.now(),
-    });
-    setPlan(newPlan);
-    await savePlan(newPlan);
-  };
-
-  // Toggle pinned state for an exercise
-  const handleTogglePin = async (exerciseId: string) => {
-    if (!profile) return;
-    const isPinned = profile.pinned?.includes(exerciseId);
-    const updatedPinned = isPinned
-      ? profile.pinned.filter((id) => id !== exerciseId)
-      : [...(profile.pinned || []), exerciseId];
-    
-    const updatedProf: UserProfile = { ...profile, pinned: updatedPinned };
-    setProfile(updatedProf);
-    await saveUserProfile(updatedProf);
-  };
-
-  // Start workout from a specific day
-  const handleStartDayWorkout = (day: PlanDay) => {
-    if (!profile) return;
-    const session: WorkoutSession = {
-      id: `session-${Date.now()}`,
-      title: day.label,
-      planId: plan?.id,
-      dayId: day.id,
-      location: profile.activeLocation,
-      startedAt: Date.now(),
-      state: 'active',
-      items: day.exercises.map((pEx) => ({
-        exerciseId: pEx.exerciseId,
-        planned: pEx,
-        sets: Array.from({ length: pEx.sets }, () => ({
-          reps: null,
-          loadKg: null,
-          done: false,
-        })),
-      })),
-    };
-    onStartSession(session);
-  };
-
-  // Execute swap
-  const handleExecuteSwap = async (newExerciseId: string) => {
-    if (!plan || !swapTarget) return;
+  async function loadData() {
     try {
-      const updatedPlan = swapExerciseInPlan(
-        plan,
-        swapTarget.dayId,
-        swapTarget.exerciseId,
-        newExerciseId,
-        CATALOG
-      );
-      setPlan(updatedPlan);
-      await savePlan(updatedPlan);
-    } catch (err) {
-      console.error('Failed to swap exercise:', err);
-    } finally {
-      setSwapTarget(null);
-    }
-  };
+      const [user, storedPlan, sessions, active, allFeedback] = await Promise.all([getUserProfile(), getLatestPlan(), getWorkoutSessions(), getActiveWorkout(), getAllFeedback()]);
+      const currentPlan = storedPlan ?? generatePlan(user, CATALOG, sessions, { feedback: allFeedback, createdAt: Date.now() });
+      if (!storedPlan) await savePlan(currentPlan);
+      setProfile(user);
+      setDraft({ ...user, weekdays: orderedWeekdays(user.weekdays) });
+      setPlan(currentPlan);
+      setHistory(sessions);
+      setFeedback(allFeedback);
+      setActiveWorkout(active?.state === 'active' ? active : null);
+      try { setRoutines(await getRoutines()); setRoutinesError(''); }
+      catch { setRoutinesError('Saved routines could not be loaded. Retry to see your saved workouts.'); }
+    } catch { setError('Your plan could not be loaded or saved. Check device storage and retry.'); }
+    finally { setLoading(false); }
+  }
 
-  // Eligible substitute candidates for current swap target
+  useEffect(() => { void loadData(); }, []);
+  const editorId = editor?.id;
+  useEffect(() => { if (editorId && view === 'routines') editorHeading.current?.focus(); }, [editorId, view]);
+  useEffect(() => { if (swapTarget) swapHeading.current?.focus(); }, [swapTarget]);
+
+  async function perform(action: () => Promise<void>, success?: string) {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setBusy(true); setError(''); setStatus('');
+    try { await action(); if (success) setStatus(success); }
+    catch (err) { setError(err instanceof Error ? `${err.message} No success was confirmed. Please retry.` : 'This action could not be completed. Please retry.'); }
+    finally { busyRef.current = false; setBusy(false); }
+  }
+
+  const configChanged = Boolean(profile && draft && (plan?.location !== draft.activeLocation || profile.activeLocation !== draft.activeLocation || profile.daysPerWeek !== draft.daysPerWeek || profile.durationMin !== draft.durationMin || orderedWeekdays(profile.weekdays).join() !== draft.weekdays.join()));
+  const scheduleValid = Boolean(draft && draft.weekdays.length === draft.daysPerWeek);
+  const preview = useMemo(() => {
+    if (!draft || !plan || !configChanged || !scheduleValid) return null;
+    try { return { plan: generatePlan(draft, CATALOG, history, { existingPlan: plan, feedback }), error: '' }; }
+    catch { return { plan: null, error: 'A preview could not be created with these settings. Adjust your choices and try again.' }; }
+  }, [draft, plan, configChanged, scheduleValid, history, feedback]);
+
+  const completedDayIds = useMemo(() => {
+    const weekStart = new Date(todayDate);
+    weekStart.setHours(0, 0, 0, 0);
+    weekStart.setDate(weekStart.getDate() - (weekStart.getDay() + 6) % 7);
+    return new Set(history.filter((session) => session.state === 'done' && session.planId === plan?.id && (session.endedAt ?? session.startedAt) >= weekStart.getTime()).map((session) => session.dayId));
+  }, [history, plan?.id, todayDate]);
+  const weekdays = orderedWeekdays(profile?.weekdays ?? []);
+  const today = WEEKDAYS[(todayDate.getDay() + 6) % 7];
+  const todayIndex = weekdays.indexOf(today);
+  const nextDay = plan?.days.find((day, index) => index === todayIndex && !completedDayIds.has(day.id)) ?? plan?.days.find((day) => !completedDayIds.has(day.id)) ?? plan?.days[0];
+
+  async function startSession(makeSession: () => WorkoutSession) {
+    // Recheck at start time: another screen may have saved a workout since mounting.
+    const existing = await getActiveWorkout();
+    if (existing?.state === 'active') { setActiveWorkout(existing); onStartSession(existing); return; }
+    onStartSession(makeSession());
+  }
+
+  function daySession(day: PlanDay, location: LocationType): WorkoutSession {
+    return { ...sessionFromRoutine(routineFromDay(day, location)), planId: plan?.id, dayId: day.id };
+  }
+
+  const updateWeeklyPlan = () => perform(async () => {
+    if (!draft || !plan || !scheduleValid) return;
+    const sessions = await getWorkoutSessions();
+    const next = generatePlan(draft, CATALOG, sessions, { existingPlan: plan, feedback, planId: `plan-${crypto.randomUUID()}`, createdAt: Date.now() });
+    if (next.days.some((day) => day.exercises.length === 0)) throw new Error('Some days have no eligible exercises. Review your equipment and restrictions.');
+    if (next.split === plan.split) next.days = next.days.map((day, index) => ({ ...day, id: plan.days[index]?.id ?? day.id }));
+    // Both records commit together: a storage failure must not leave settings ahead of the plan.
+    await db.transaction('rw', db.profiles, db.plans, async () => {
+      await saveUserProfile(draft);
+      await savePlan(next);
+    });
+    setProfile(draft); setPlan(next); setHistory(sessions);
+  }, 'Weekly plan saved on this device. Completed workouts are unchanged.');
+
+  const adaptToday = () => perform(async () => {
+    if (!draft || !plan || !nextDay) return;
+    await startSession(() => {
+      const adapted = generatePlan(draft, CATALOG, history, { existingPlan: plan, feedback });
+      const day = adapted.days[plan.days.findIndex((item) => item.id === nextDay.id)] ?? adapted.days[0];
+      if (!day?.exercises.length) throw new Error('No eligible exercises for this location. Review your equipment and restrictions.');
+      return daySession({ ...day, id: nextDay.id }, draft.activeLocation);
+    });
+  });
+
+  function openEditor(routine: Routine, saved: boolean) {
+    if (editorDirty && !window.confirm('Discard unsaved routine changes?')) return;
+    setEditor(copyRoutine(routine)); setEditorBaseline(saved ? copyRoutine(routine) : null);
+    setView('routines'); setSwapTarget(null); setAddExerciseId(''); setStatus('');
+  }
+
+  const saveEditedRoutine = () => perform(async () => {
+    if (!editor) return;
+    if (!editor.title.trim() || !editor.exercises.length) throw new Error('Give your routine a name and at least one exercise.');
+    if (editor.exercises.some((exercise) => !Number.isInteger(exercise.sets) || exercise.sets < 1 || exercise.sets > 30 || !exercise.reps.trim() || !Number.isFinite(exercise.restSec) || exercise.restSec < 0 || exercise.restSec > 1800)) throw new Error('Use 1–30 sets, a rep target, and 0–1800 seconds of rest.');
+    const saved = { ...copyRoutine(editor), title: editor.title.trim(), updatedAt: Date.now() };
+    await saveRoutine(saved);
+    setRoutines((current) => [saved, ...current.filter((routine) => routine.id !== saved.id)]);
+    setEditor(saved); setEditorBaseline(copyRoutine(saved));
+  }, 'Routine saved on this device.');
+
+  function editExercise(index: number, patch: Partial<PlannedExercise>) {
+    setEditor((current) => current ? { ...current, exercises: current.exercises.map((exercise, i) => i === index ? { ...exercise, ...patch } : exercise) } : current);
+  }
+
+  function openSwap(target: NonNullable<typeof swapTarget>, trigger: HTMLElement) {
+    swapTrigger.current = trigger; setSwapReason('preference'); setUnavailableEquipment([]); setSwapTarget(target);
+  }
+  function closeSwap() { setSwapTarget(null); swapTrigger.current?.focus(); }
+
+  const swapLocation = swapTarget?.dayId ? plan?.location : editor?.location;
   const swapCandidates = useMemo(() => {
-    if (!swapTarget || !profile) return [];
-    const availableEquipment = profile.equipment[profile.activeLocation] || [];
-    return findSubstitutes(swapTarget.exerciseId, availableEquipment);
-  }, [swapTarget, profile]);
+    if (!swapTarget || !profile || !swapLocation) return [];
+    const used = swapTarget.dayId ? plan?.days.find((day) => day.id === swapTarget.dayId)?.exercises : editor?.exercises;
+    const available = (profile.equipment[swapLocation] ?? []).filter((id) => swapReason !== 'equipment' || !unavailableEquipment.includes(id));
+    const swapProfile = { ...profile, equipment: { ...profile.equipment, [swapLocation]: available } };
+    return findSubstitutes(swapTarget.exerciseId, available).filter((exercise) => isExerciseEligible(exercise, swapProfile, swapLocation, feedback) && !used?.some((item) => item.exerciseId === exercise.id));
+  }, [swapTarget, profile, swapLocation, plan, editor, feedback, swapReason, unavailableEquipment]);
+  const addCandidates = useMemo(() => !editor || !profile ? [] : CATALOG.filter((exercise) => isExerciseEligible(exercise, profile, editor.location, feedback) && !editor.exercises.some((item) => item.exerciseId === exercise.id)), [editor, profile, feedback]);
 
-  if (loading) {
-    return (
-      <div className="view" style={{ alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <p className="sub">Assembling your training plan...</p>
-      </div>
-    );
-  }
+  const executeSwap = (candidate: Exercise) => perform(async () => {
+    if (!swapTarget) return;
+    const reason = `Replaced ${exerciseName(swapTarget.exerciseId)}: ${swapReason === 'equipment' ? 'different equipment' : swapReason === 'discomfort' ? 'avoiding discomfort' : 'your preference'}. ${CATALOG_BY_ID[swapTarget.exerciseId]?.movement === candidate.movement ? 'Same movement pattern.' : 'Related muscle target.'}`;
+    if (swapTarget.dayId && plan) {
+      const updated = swapExerciseInPlan(plan, swapTarget.dayId, swapTarget.exerciseId, candidate.id, CATALOG);
+      const exercise = updated.days.find((day) => day.id === swapTarget.dayId)?.exercises[swapTarget.index];
+      if (exercise) exercise.reason = reason;
+      await savePlan(updated); setPlan(updated); setStatus('Exercise swap saved.');
+    } else { editExercise(swapTarget.index, { exerciseId: candidate.id, reason }); setStatus('Replacement added to your draft. Save the routine to keep it.'); }
+    closeSwap();
+  });
 
-  if (!plan) {
-    return (
-      <div className="view">
-        <div className="empty">
-          <p>No training plan available yet.</p>
-          <button type="button" className="btn primary" onClick={handleRegenerate} style={{ marginTop: 12 }}>
-            Generate Adaptive Plan
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const downloadPack = (exercises: PlannedExercise[]) => perform(async () => {
+    setStatus('Downloading exercise images for offline use… Keep this screen open.');
+    const result = await downloadExerciseMedia([...new Set(exercises.map((exercise) => exercise.exerciseId))], (done, total) => setStatus(`Downloading offline images: ${done} of ${total} checked…`));
+    setStatus(`${result.downloaded} of ${result.total} images available offline.${result.failed ? ` ${result.failed} failed; connect to the internet and retry.` : ' Workout instructions and logs remain on this device.'}`);
+  });
 
-  const targetExerciseForSwap = swapTarget ? CATALOG_BY_ID[swapTarget.exerciseId] : null;
+  if (loading) return <div className="view plan-screen"><p role="status">Loading your training plan…</p></div>;
+  if (!profile || !draft || !plan) return <div className="view plan-screen"><h1 className="h-hero">Training plan</h1><p role="alert">{error || 'No training plan is available.'}</p><button type="button" className="btn primary" onClick={() => { setLoading(true); setError(''); void loadData(); }}>Retry loading plan</button></div>;
 
-  return (
-    <div className="view">
-      {/* Top Header */}
-      <div className="row between">
-        <div>
-          <h1 className="h-hero">Training Plan</h1>
-          <p className="sub">{plan.split} · {plan.days.length} Days/wk</p>
-        </div>
-        <button
-          type="button"
-          className="btn small-btn ghost"
-          onClick={handleRegenerate}
-          title="Regenerate plan with current constraints"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 2v6h-6" />
-            <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-            <path d="M3 22v-6h6" />
-            <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-          </svg>
-          Regenerate
-        </button>
-      </div>
+  return <div className="view plan-screen" aria-busy={busy}>
+    <header className="plan-page-header"><h1 className="h-hero">Training plan</h1><p className="sub">{plan.split} · {plan.days.length} days/week · {locationLabel(plan.location)}</p></header>
+    {error && <p className="plan-error" role="alert">{error}</p>}
+    <p className="plan-status" role="status" aria-live="polite">{status || (busy ? 'Saving changes…' : '')}</p>
+    {activeWorkout && <section className="panel plan-resume" aria-label="Workout in progress"><div><h2 className="h-sec">Workout in progress</h2><p>{activeWorkout.title}. Starting any workout will resume this session.</p></div><button type="button" className="btn primary" disabled={busy} onClick={() => void perform(() => startSession(() => activeWorkout))}>Resume workout</button></section>}
+    <nav className="seg" aria-label="Plan views"><button type="button" aria-pressed={view === 'schedule'} onClick={() => { setView('schedule'); setSwapTarget(null); }}>Weekly schedule</button><button type="button" aria-pressed={view === 'routines'} onClick={() => { setView('routines'); setSwapTarget(null); }}>Saved routines{routines.length ? ` (${routines.length})` : ''}</button></nav>
 
-      {/* Location Selector Tabs */}
-      <div className="seg" role="tablist" aria-label="Training Location">
-        {(['home', 'gym', 'travel'] as LocationType[]).map((loc) => {
-          const isActive = profile?.activeLocation === loc;
-          const label = loc === 'home' ? 'Home' : loc === 'gym' ? 'Gym' : 'Travel';
-          return (
-            <button
-              key={loc}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              aria-pressed={isActive}
-              onClick={() => handleLocationSwitch(loc)}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+    {view === 'schedule' && <>
+      <section className="plan-schedule" aria-labelledby="schedule-heading">
+        <div className="plan-section-heading"><h2 id="schedule-heading" className="h-sec">Your week</h2><p className="small">{profile.durationMin}-minute target · {weekdays.join(', ') || 'No preferred weekdays'}</p></div>
+        <ol className="plan-week-strip" aria-label="Preferred weekly schedule">{WEEKDAYS.map((weekday) => {
+          const index = weekdays.indexOf(weekday); const day = index >= 0 ? plan.days[index] : null;
+          return <li key={weekday} className={day ? 'is-training-day' : ''} aria-current={weekday === today ? 'date' : undefined}><strong>{weekday}</strong>{day ? <a href={`#plan-day-${day.id}`} onClick={(event) => { event.preventDefault(); document.getElementById(`plan-day-${day.id}`)?.scrollIntoView({ block: 'start' }); }} aria-label={`${weekday}: ${day.label}${completedDayIds.has(day.id) ? ', completed' : ''}`}><span className="plan-week-full-label">{day.label}{completedDayIds.has(day.id) ? ' · Done' : ''}</span><span className="plan-week-short-label" aria-hidden="true">{completedDayIds.has(day.id) ? 'Done' : 'Train'}</span></a> : <span>Rest</span>}</li>;
+        })}</ol>
+        {nextDay && <div className="plan-next"><div><h3>{completedDayIds.size >= plan.days.length ? 'This week is complete' : 'Up next'}</h3><p>{nextDay.label} · {nextDay.exercises.length} exercises</p></div><button type="button" className="btn primary" disabled={busy || !nextDay.exercises.length} onClick={() => void perform(() => startSession(() => daySession(nextDay, plan.location)))}>{activeWorkout ? 'Resume workout' : 'Start next workout'}</button></div>}
+      </section>
 
-      {/* "Why this plan?" plain-English card */}
-      <div className="panel" style={{ borderLeft: '3.5px solid var(--action)' }}>
-        <div
-          className="row between"
-          style={{ cursor: 'pointer' }}
-          onClick={() => setShowExplanation(!showExplanation)}
-        >
-          <div className="row" style={{ gap: 8 }}>
-            <span style={{ color: 'var(--action)', fontWeight: 700, fontSize: 13.5 }}>WHY THIS PLAN?</span>
-            <span className="small">({plan.explanation.length} design decisions)</span>
-          </div>
-          <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-            {showExplanation ? '▲ Hide' : '▼ Details'}
-          </span>
-        </div>
-        {showExplanation && (
-          <ul style={{ margin: '10px 0 0', paddingLeft: 18, color: 'var(--text-2)', fontSize: 13, lineHeight: 1.6 }}>
-            {plan.explanation.map((item, idx) => (
-              <li key={idx} style={{ marginBottom: 4 }}>{item}</li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <details className="panel plan-adjust"><summary>Adjust plan</summary><div className="plan-adjust-body">
+        <p className="small">Preview changes before saving. Adapting one workout leaves your weekly plan and preferences unchanged.</p>
+        <fieldset disabled={busy}><legend>Training location</legend><div className="seg">{LOCATIONS.map((location) => <button type="button" key={location} aria-pressed={draft.activeLocation === location} onClick={() => setDraft({ ...draft, activeLocation: location })}>{locationLabel(location)}</button>)}</div></fieldset>
+        <div className="plan-settings-grid"><label>Days per week<select value={draft.daysPerWeek} disabled={busy} onChange={(event) => { const count = Number(event.target.value); const chosen = [...draft.weekdays, ...WEEKDAYS.filter((day) => !draft.weekdays.includes(day))].slice(0, count); setDraft({ ...draft, daysPerWeek: count, weekdays: orderedWeekdays(chosen) }); }}>{[2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count} days</option>)}</select></label><label>Workout duration<select value={draft.durationMin} disabled={busy} onChange={(event) => setDraft({ ...draft, durationMin: Number(event.target.value) as UserProfile['durationMin'] })}>{[30, 45, 60].map((duration) => <option key={duration} value={duration}>{duration} minutes</option>)}</select></label></div>
+        <fieldset disabled={busy}><legend>Preferred weekdays</legend><div className="plan-weekday-options">{WEEKDAYS.map((weekday) => <label key={weekday}><input type="checkbox" checked={draft.weekdays.includes(weekday)} onChange={() => setDraft({ ...draft, weekdays: orderedWeekdays(draft.weekdays.includes(weekday) ? draft.weekdays.filter((day) => day !== weekday) : [...draft.weekdays, weekday]) })} />{weekday}</label>)}</div><p className="small">Choose {draft.daysPerWeek} days. Selected: {draft.weekdays.length}.</p></fieldset>
+        {configChanged && <section className="plan-preview" aria-labelledby="preview-heading"><h3 id="preview-heading">Change preview</h3><p>{locationLabel(plan.location)} → {locationLabel(draft.activeLocation)} · {plan.days.length} → {draft.daysPerWeek} days · {profile.durationMin} → {draft.durationMin} minutes</p><p className="small">Preferred days: {draft.weekdays.join(', ') || 'None'}. Eligible pins are kept. Completed history is never rewritten.</p>
+          {!scheduleValid && <p role="alert">Select exactly {draft.daysPerWeek} preferred weekdays to preview and save.</p>}
+          {preview?.error && <p role="alert">{preview.error}</p>}
+          {preview?.plan && <ul className="plan-preview-days">{preview.plan.days.map((day, index) => { const original = plan.days[index]; const changes = day.exercises.filter((exercise) => !original?.exercises.some((item) => item.exerciseId === exercise.exerciseId && item.sets === exercise.sets && item.reps === exercise.reps && item.restSec === exercise.restSec)); return <li key={day.id}><strong>{draft.weekdays[index]} · {day.label}</strong><span>{changes.length ? `${changes.length} new or adjusted exercises` : 'Exercises unchanged'}</span><span className="small">{day.exercises.map((exercise) => exerciseName(exercise.exerciseId)).join(' · ') || 'No eligible exercises'}</span></li>; })}</ul>}
+          <div className="plan-actions"><button type="button" className="btn" disabled={busy || !scheduleValid || !preview?.plan || !nextDay} onClick={() => void adaptToday()}>{activeWorkout ? 'Resume workout' : "Adapt today's workout"}</button><button type="button" className="btn primary" disabled={busy || !scheduleValid || !preview?.plan} onClick={() => void updateWeeklyPlan()}>Update weekly plan</button><button type="button" className="btn ghost" disabled={busy} onClick={() => setDraft({ ...profile, weekdays: orderedWeekdays(profile.weekdays) })}>Discard changes</button></div>
+        </section>}
+      </div></details>
 
-      {/* Weekly Plan Day Cards */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {plan.days.map((day) => (
-          <div key={day.id} className="daycard">
-            <header className="row between" style={{ background: 'var(--surface-2)' }}>
-              <div>
-                <div className="d">{day.label}</div>
-                <div className="f">{day.focus}</div>
-              </div>
-              <button
-                type="button"
-                className="btn small-btn primary"
-                onClick={() => handleStartDayWorkout(day)}
-              >
-                Start Workout
-              </button>
-            </header>
+      <div className="plan-days">{plan.days.map((day, dayIndex) => <section className="panel plan-day" key={day.id} id={`plan-day-${day.id}`} aria-labelledby={`day-heading-${day.id}`}>
+        <header className="plan-day-header"><div><p className="small">{weekdays[dayIndex] ?? `Session ${dayIndex + 1}`}{completedDayIds.has(day.id) ? ' · Completed this week' : ''}</p><h2 className="h-sec" id={`day-heading-${day.id}`}>{day.label}</h2><p className="small">{day.focus}</p></div><button type="button" className="btn primary" disabled={busy || !day.exercises.length} onClick={() => void perform(() => startSession(() => daySession(day, plan.location)))}>{activeWorkout ? 'Resume workout' : 'Start workout'}</button></header>
+        <ol className="plan-exercises">{day.exercises.map((exercise, index) => <li className="plan-exercise" key={`${exercise.exerciseId}-${index}`}><ExerciseSummary exercise={exercise} onSelectExercise={onSelectExercise} /><div className="plan-exercise-actions"><button type="button" className="btn ghost" disabled={busy} aria-label={`${profile.pinned.includes(exercise.exerciseId) ? 'Unpin' : 'Pin'} ${exerciseName(exercise.exerciseId)}`} aria-pressed={profile.pinned.includes(exercise.exerciseId)} onClick={() => void perform(async () => { const pinned = profile.pinned.includes(exercise.exerciseId) ? profile.pinned.filter((id) => id !== exercise.exerciseId) : [...profile.pinned, exercise.exerciseId]; const updated = { ...profile, pinned }; await saveUserProfile(updated); setProfile(updated); setDraft((current) => current ? { ...current, pinned } : current); }, 'Pin preference saved.')}>{profile.pinned.includes(exercise.exerciseId) ? 'Pinned' : 'Pin'}</button><button type="button" className="btn ghost" disabled={busy} aria-label={`Swap ${exerciseName(exercise.exerciseId)} in ${day.label}`} onClick={(event) => openSwap({ dayId: day.id, index, exerciseId: exercise.exerciseId }, event.currentTarget)}>Swap</button></div></li>)}</ol>
+        <footer className="plan-day-footer"><div className="plan-actions"><button type="button" className="btn" disabled={busy} onClick={() => openEditor(routineFromDay(day, plan.location), false)}>Save as routine</button><button type="button" className="btn ghost" disabled={busy || !day.exercises.length} onClick={() => void downloadPack(day.exercises)}>Download workout media</button></div><div className="plan-actions" aria-label={`Move ${day.label}`}><button type="button" className="btn ghost" disabled={busy || dayIndex === 0} aria-label={`Move ${day.label} earlier`} onClick={() => void perform(async () => { const updated = { ...plan, days: moveItem(plan.days, dayIndex, -1) }; await savePlan(updated); setPlan(updated); }, 'Schedule order saved. Completed history is unchanged.')}>Move earlier</button><button type="button" className="btn ghost" disabled={busy || dayIndex === plan.days.length - 1} aria-label={`Move ${day.label} later`} onClick={() => void perform(async () => { const updated = { ...plan, days: moveItem(plan.days, dayIndex, 1) }; await savePlan(updated); setPlan(updated); }, 'Schedule order saved. Completed history is unchanged.')}>Move later</button></div></footer>
+      </section>)}</div>
+      <details className="panel plan-explanation"><summary>Why this plan?</summary><ul>{plan.explanation.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>
+    </>}
 
-            <div style={{ padding: '4px 0' }}>
-              {day.exercises.map((plannedEx, exIdx) => {
-                const ex = CATALOG_BY_ID[plannedEx.exerciseId];
-                const isPinned = profile?.pinned?.includes(plannedEx.exerciseId);
-                const thumb = ex ? getExerciseImageUrl(ex, 'start') : null;
+    {view === 'routines' && <section className="plan-routines" aria-labelledby="routines-heading"><h2 id="routines-heading" className="h-sec">Saved routines</h2><p className="sub">Keep workouts you want to repeat. Edits only change the routine, not past sessions.</p>
+      {routinesError && <div className="plan-error"><p role="alert">{routinesError}</p><button type="button" className="btn" disabled={busy} onClick={() => void perform(async () => { setRoutines(await getRoutines()); setRoutinesError(''); })}>Retry loading routines</button></div>}
+      {editor && <section className="panel plan-routine-editor" aria-labelledby="routine-editor-heading"><h3 id="routine-editor-heading" ref={editorHeading} tabIndex={-1}>{editorBaseline ? 'Edit routine' : 'Save workout as a routine'}</h3><p className="small">{editorDirty ? 'Unsaved changes' : 'Saved on this device'}</p><div className="plan-settings-grid"><label>Routine name<input value={editor.title} maxLength={120} disabled={busy} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>Routine location<select value={editor.location} disabled={busy} onChange={(event) => { setEditor({ ...editor, location: event.target.value as LocationType }); setAddExerciseId(''); setSwapTarget(null); }}>{LOCATIONS.map((location) => <option key={location} value={location}>{locationLabel(location)}</option>)}</select></label></div>
+        <ol className="plan-exercises">{editor.exercises.map((exercise, index) => <li className="plan-routine-exercise" key={`${exercise.exerciseId}-${index}`}><ExerciseSummary exercise={exercise} onSelectExercise={onSelectExercise} />
+          {CATALOG_BY_ID[exercise.exerciseId] && !isExerciseEligible(CATALOG_BY_ID[exercise.exerciseId], profile, editor.location, feedback) && <p className="plan-error small">This exercise does not match your equipment, experience, or restrictions. Swap or remove it before training.</p>}
+          <div className="plan-prescription-inputs"><label>Sets<input aria-label={`Sets for ${exerciseName(exercise.exerciseId)}`} type="number" min="1" max="30" value={exercise.sets} disabled={busy} onChange={(event) => editExercise(index, { sets: Number(event.target.value) })} /></label><label>Reps<input aria-label={`Reps for ${exerciseName(exercise.exerciseId)}`} value={exercise.reps} disabled={busy} onChange={(event) => editExercise(index, { reps: event.target.value })} /></label><label>Rest (seconds)<input aria-label={`Rest seconds for ${exerciseName(exercise.exerciseId)}`} type="number" min="0" max="1800" value={exercise.restSec} disabled={busy} onChange={(event) => editExercise(index, { restSec: Number(event.target.value) })} /></label></div>
+          <div className="plan-actions"><button type="button" className="btn ghost" disabled={busy || index === 0} aria-label={`Move ${exerciseName(exercise.exerciseId)} up`} onClick={() => { setEditor({ ...editor, exercises: moveItem(editor.exercises, index, -1) }); setSwapTarget(null); }}>Move up</button><button type="button" className="btn ghost" disabled={busy || index === editor.exercises.length - 1} aria-label={`Move ${exerciseName(exercise.exerciseId)} down`} onClick={() => { setEditor({ ...editor, exercises: moveItem(editor.exercises, index, 1) }); setSwapTarget(null); }}>Move down</button><button type="button" className="btn ghost" disabled={busy} aria-label={`Replace ${exerciseName(exercise.exerciseId)}`} onClick={(event) => openSwap({ index, exerciseId: exercise.exerciseId }, event.currentTarget)}>Replace</button><button type="button" className="btn ghost" disabled={busy} aria-label={`Remove ${exerciseName(exercise.exerciseId)}`} onClick={() => { setEditor({ ...editor, exercises: editor.exercises.filter((_, i) => i !== index) }); setSwapTarget(null); }}>Remove</button></div>
+        </li>)}</ol>
+        <div className="plan-add-exercise"><label>Add an exercise<select value={addExerciseId} disabled={busy} onChange={(event) => setAddExerciseId(event.target.value)}><option value="">Choose an eligible exercise</option>{addCandidates.map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select></label><button type="button" className="btn" disabled={busy || !addExerciseId} onClick={() => { setEditor({ ...editor, exercises: [...editor.exercises, { exerciseId: addExerciseId, sets: 3, reps: '8–12', restSec: 90, reason: 'Added by you.' }] }); setAddExerciseId(''); }}>Add exercise</button></div>
+        <div className="plan-actions"><button type="button" className="btn primary" disabled={busy || !editorDirty || !editor.title.trim() || !editor.exercises.length} onClick={() => void saveEditedRoutine()}>{busy ? 'Saving…' : 'Save routine'}</button><button type="button" className="btn ghost" disabled={busy} onClick={() => { if (!editorDirty || window.confirm('Discard unsaved routine changes?')) { setEditor(null); setSwapTarget(null); } }}>Close editor</button></div>
+      </section>}
+      {!routines.length && !routinesError && <div className="plan-empty"><h3>No saved routines yet</h3><p>Choose “Save as routine” on a scheduled workout to create your first reusable routine.</p><button type="button" className="btn" onClick={() => setView('schedule')}>View weekly schedule</button></div>}
+      <ul className="plan-routine-list">{routines.map((routine) => <li className="plan-routine" key={routine.id}><div><h3>{routine.title}</h3><p className="small">{locationLabel(routine.location)} · {routine.exercises.length} exercises · Saved on this device</p><p className="small">{routine.exercises.map((exercise) => exerciseName(exercise.exerciseId)).join(' · ')}</p></div><div className="plan-actions"><button type="button" className="btn primary" disabled={busy || !routine.exercises.length} aria-label={`${activeWorkout ? 'Resume workout instead of' : 'Start'} ${routine.title}`} onClick={() => void perform(() => startSession(() => sessionFromRoutine(routine)))}>{activeWorkout ? 'Resume workout' : 'Start routine'}</button><button type="button" className="btn" disabled={busy} aria-label={`Edit ${routine.title}`} onClick={() => openEditor(routine, true)}>Edit</button><button type="button" className="btn ghost" disabled={busy} aria-label={`Duplicate ${routine.title}`} onClick={() => void perform(async () => { const now = Date.now(); const duplicate = { ...copyRoutine(routine), id: `routine-${crypto.randomUUID()}`, title: `${routine.title} (copy)`, createdAt: now, updatedAt: now }; await saveRoutine(duplicate); setRoutines((current) => [duplicate, ...current]); }, 'Routine duplicated and saved.')}>Duplicate</button><button type="button" className="btn ghost" disabled={busy} onClick={() => void downloadPack(routine.exercises)} aria-label={`Download media for ${routine.title}`}>Download media</button><button type="button" className="btn ghost" disabled={busy} aria-label={`Delete ${routine.title}`} onClick={() => setDeleteTarget(routine.id)}>Delete</button></div>
+        {deleteTarget === routine.id && <div className="plan-delete-confirm" role="group" aria-label={`Confirm deleting ${routine.title}`}><p>Delete “{routine.title}”? Completed workout history will stay.</p><div className="plan-actions"><button type="button" className="btn" disabled={busy} onClick={() => void perform(async () => { await deleteRoutine(routine.id); setRoutines((current) => current.filter((item) => item.id !== routine.id)); if (editor?.id === routine.id) { setEditor(null); setSwapTarget(null); } setDeleteTarget(null); }, 'Routine deleted. Workout history is unchanged.')}>Confirm delete routine</button><button type="button" className="btn ghost" disabled={busy} onClick={() => setDeleteTarget(null)}>Keep routine</button></div></div>}
+      </li>)}</ul>
+    </section>}
 
-                return (
-                  <div
-                    key={`${plannedEx.exerciseId}-${exIdx}`}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '10px 14px',
-                      borderBottom: exIdx < day.exercises.length - 1 ? '1px solid var(--hairline)' : 'none',
-                    }}
-                  >
-                    {/* Thumbnail */}
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 8,
-                        background: 'var(--surface-2)',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: onSelectExercise ? 'pointer' : 'default',
-                      }}
-                      onClick={() => onSelectExercise && onSelectExercise(plannedEx.exerciseId)}
-                    >
-                      {thumb ? (
-                        <img
-                          src={thumb}
-                          alt={ex?.name ?? ''}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)' }} />
-                      )}
-                    </div>
-
-                    {/* Exercise Info */}
-                    <div
-                      style={{ flex: 1, minWidth: 0, cursor: onSelectExercise ? 'pointer' : 'default' }}
-                      onClick={() => onSelectExercise && onSelectExercise(plannedEx.exerciseId)}
-                    >
-                      <div style={{ fontWeight: 650, fontSize: 14.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {ex?.name ?? plannedEx.exerciseId}
-                      </div>
-                      <div className="small" style={{ marginTop: 2 }}>
-                        <span style={{ color: 'var(--action)', fontWeight: 600 }}>{plannedEx.sets} sets</span>
-                        {' · '}
-                        <span>{plannedEx.reps} reps</span>
-                        {' · '}
-                        <span>{plannedEx.restSec}s rest</span>
-                      </div>
-                      {plannedEx.reason && (
-                        <div style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 2, fontStyle: 'italic' }}>
-                          {plannedEx.reason}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                      {/* Pin button */}
-                      <button
-                        type="button"
-                        onClick={() => handleTogglePin(plannedEx.exerciseId)}
-                        title={isPinned ? 'Pinned in plan' : 'Pin to prevent replacement'}
-                        style={{
-                          background: isPinned ? 'rgba(0, 229, 255, 0.16)' : 'transparent',
-                          border: `1px solid ${isPinned ? 'var(--accent)' : 'var(--hairline)'}`,
-                          color: isPinned ? 'var(--accent)' : 'var(--text-2)',
-                          borderRadius: 8,
-                          width: 34,
-                          height: 34,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), background 200ms ease, border-color 200ms ease',
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={isPinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
-                          <line x1="12" y1="17" x2="12" y2="22" />
-                          <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z" />
-                        </svg>
-                      </button>
-
-                      {/* Swap button */}
-                      <button
-                        type="button"
-                        onClick={() => setSwapTarget({ dayId: day.id, exerciseId: plannedEx.exerciseId })}
-                        title="Swap exercise"
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid var(--hairline)',
-                          color: 'var(--text-2)',
-                          borderRadius: 8,
-                          width: 34,
-                          height: 34,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          transition: 'transform 180ms cubic-bezier(0.34, 1.4, 0.64, 1), background 200ms ease, border-color 200ms ease',
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m16 3 4 4-4 4" />
-                          <path d="M20 7H4" />
-                          <path d="m8 21-4-4 4-4" />
-                          <path d="M4 17h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Swap Exercise Modal Sheet */}
-      {swapTarget && (
-        <>
-          <div className="scrim" onClick={() => setSwapTarget(null)} />
-          <div className="sheet">
-            <div className="grab" />
-            <div className="row between" style={{ marginBottom: 12 }}>
-              <div>
-                <div className="h-sec">Swap Exercise</div>
-                <div className="small">
-                  Replacing <strong style={{ color: 'var(--text)' }}>{targetExerciseForSwap?.name ?? swapTarget.exerciseId}</strong>
-                </div>
-              </div>
-              <button
-                type="button"
-                className="btn small-btn ghost"
-                onClick={() => setSwapTarget(null)}
-              >
-                Cancel
-              </button>
-            </div>
-
-            {swapCandidates.length === 0 ? (
-              <div className="empty" style={{ margin: '14px 0' }}>
-                <p>No valid alternatives found matching your available {profile?.activeLocation} equipment.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '55vh', overflowY: 'auto' }}>
-                {swapCandidates.map((cand) => {
-                  const candThumb = getExerciseImageUrl(cand, 'start');
-                  return (
-                    <div
-                      key={cand.id}
-                      onClick={() => handleExecuteSwap(cand.id)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '10px 12px',
-                        background: 'var(--surface)',
-                        border: '1px solid var(--hairline)',
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 8,
-                          background: 'var(--surface-2)',
-                          overflow: 'hidden',
-                          flexShrink: 0,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        {candThumb ? (
-                          <img src={candThumb} alt={cand.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--action)' }} />
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 650, fontSize: 14 }}>{cand.name}</div>
-                        <div className="small" style={{ marginTop: 2 }}>
-                          {cand.equipmentIds.map((eq) => EQUIPMENT_BY_ID[eq]?.label ?? eq).join(' · ')}
-                        </div>
-                      </div>
-                      <span style={{ fontSize: 12, color: 'var(--action)', fontWeight: 600 }}>
-                        Select →
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* RepDB Attribution */}
-      <footer className="credit" style={{ textAlign: 'center', marginTop: 12 }}>
-        Exercise data by <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">RepDB (repdb.co)</a>.
-      </footer>
-    </div>
-  );
+    {swapTarget && <section className="panel plan-swap" aria-labelledby="swap-heading" onKeyDown={(event) => { if (event.key === 'Escape' && !busy) closeSwap(); }}><div className="plan-section-heading"><div><h2 className="h-sec" id="swap-heading" ref={swapHeading} tabIndex={-1}>Swap exercise</h2><p>Replacing {exerciseName(swapTarget.exerciseId)}</p></div><button type="button" className="btn ghost" disabled={busy} onClick={closeSwap}>Cancel swap</button></div><label>Reason for swapping<select value={swapReason} disabled={busy} onChange={(event) => setSwapReason(event.target.value)}><option value="preference">I prefer a different exercise</option><option value="equipment">Equipment is unavailable</option><option value="discomfort">This exercise is uncomfortable</option></select></label><p className="small">Only alternatives matching your {swapLocation} equipment, restrictions, and experience are shown. No duplicate exercises.</p>{swapReason === 'discomfort' && <p className="small">Stop if you feel pain. A substitute is not medical advice; review persistent discomfort with a qualified professional.</p>}
+      {swapReason === 'equipment' && <fieldset disabled={busy}><legend>Which equipment is unavailable today?</legend><div className="plan-weekday-options">{(profile.equipment[swapLocation ?? plan.location] ?? []).filter((id) => id !== 'bodyweight').map((id) => <label key={id}><input type="checkbox" checked={unavailableEquipment.includes(id)} onChange={() => setUnavailableEquipment((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])} />{EQUIPMENT_BY_ID[id]?.label ?? id}</label>)}</div></fieldset>}
+      {!swapCandidates.length ? <p>No eligible alternatives. Review your equipment or restrictions; they have not been bypassed.</p> : <ul className="plan-swap-options">{swapCandidates.map((candidate) => <li key={candidate.id}><button type="button" className="plan-swap-option" disabled={busy} onClick={() => void executeSwap(candidate)}><Thumbnail exerciseId={candidate.id} /><span><strong>{candidate.name}</strong><span className="small">{candidate.equipmentIds.map((id) => EQUIPMENT_BY_ID[id]?.label ?? id).join(' · ') || 'No equipment'} · Difficulty {candidate.difficulty}</span><span className="small">{CATALOG_BY_ID[swapTarget.exerciseId]?.movement === candidate.movement ? 'Same movement pattern' : 'Related muscle target'} · Fits your equipment choices and restrictions</span></span><span>Select</span></button></li>)}</ul>}
+    </section>}
+    <footer className="credit plan-credit">Exercise data by <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">RepDB (repdb.co)</a>.</footer>
+  </div>;
 };
+
 export default PlanScreen;

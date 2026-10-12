@@ -1,4 +1,5 @@
-export { BodygraphFigure, getMuscleFillColor } from './BodygraphFigure';
+export { BodygraphFigure } from './BodygraphFigure';
+export { getMuscleFillColor } from './muscleColors';
 export type { BodygraphFigureProps, HighlightValue } from './BodygraphFigure';
 
 export { Bodygraph } from './Bodygraph';
@@ -9,4 +10,3 @@ export type { MuscleDrawerProps } from './MuscleDrawer';
 
 export { BodygraphScreen } from './BodygraphScreen';
 export type { BodygraphScreenProps } from './BodygraphScreen';
-

@@ -13,9 +13,28 @@ Notes:
   (profile, plans, logs) is exported by the backup feature — never the dataset.
 - RepDB illustrations must not be used to condition or restyle generative-AI output.
 - The in-app mapping of RepDB muscle/equipment vocabulary to the Atlas Fit canonical
-  taxonomy lives in `src/data/repdb.ts` and is manually reviewable per entry.
+   taxonomy lives in `src/data/catalog.ts` and is manually reviewable per entry.
+
+## Optional ExerciseDB OSS source
+
+ExerciseDB Free V1 data and media by AscendAPI — https://ascendapi.com.
+
+Documentation and usage restrictions: https://oss.exercisedb.dev/docs
+(OpenAPI: https://oss.exercisedb.dev/swagger), checked during this implementation.
+
+- Free usage is for personal, educational, community and non-commercial projects; monetised/commercial usage requires a paid plan.
+- Requests are rate-limited. The app uses explicit user-triggered searches, not bulk mirroring.
+- Media is 180p GIF; upstream files are not guaranteed available.
+- Selected exercise details and successfully loaded demonstrations may be cached on the user's device. Raw ExerciseDB records are not exported in training backups.
+- ExerciseDB entries are browse-only: missing difficulty, unreviewed taxonomy, and coarse equipment descriptions are not treated as safe planner eligibility.
+- No profile, workout history, or session data is sent to the API. Search terms and normal network request metadata reach the service when the user searches or loads its media.
 
 ## Open-source libraries
+
+Heading typography: Source Sans 3 by Adobe, self-hosted Latin variable WOFF2 from
+Fontsource `@fontsource-variable/source-sans-3@5.2.8`. SIL Open Font License 1.1:
+`public/fonts/LICENSE-SourceSans3.txt`. Font is precached for offline use; no hosted
+font requests are made by the app.
 
 Dexie.js · dexie-react-hooks · Vite + vite-plugin-pwa (Workbox) · React + React Router ·
 Recharts · Motion · Vitest + Testing Library. See `package.json` for versions.

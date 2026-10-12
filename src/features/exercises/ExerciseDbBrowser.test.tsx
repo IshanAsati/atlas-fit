@@ -1,0 +1,53 @@
+import 'fake-indexeddb/auto';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { ExerciseDbBrowser } from './ExerciseDbBrowser';
+import { db } from '../../data/db';
+import * as api from '../../data/exerciseDb';
+const entry: api.ExerciseDbEntry = { exerciseId: 'example123', name: 'barbell bench press', gifUrl: null, bodyParts: ['chest'], equipments: ['barbell'], targetMuscles: ['pectorals'], secondaryMuscles: ['triceps'], instructions: ['Lie on a bench.'] };
+beforeEach(async () => { await db.externalExercises.clear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+describe('optional ExerciseDB browsing', () => {
+  it('makes no automatic requests, saves selected details, and reopens them offline', async () => {
+    const search = vi.spyOn(api, 'searchExerciseDb').mockResolvedValue({ entries: [entry], nextCursor: null, total: 1 });
+    const view = render(<ExerciseDbBrowser />);
+    await screen.findByText('Your saved ExerciseDB library is empty');
+    expect(search).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('ExerciseDB search'), { target: { value: 'bench' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    fireEvent.click(await screen.findByRole('button', { name: /barbell bench press/ }));
+    expect(screen.getByRole('dialog', { name: 'barbell bench press' })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save for offline browsing' }));
+    await screen.findByText('Exercise details saved for offline browsing.');
+    expect(await db.externalExercises.get(entry.exerciseId)).toEqual(expect.objectContaining(entry));
+    view.unmount(); search.mockRejectedValue(new Error('Offline'));
+    render(<ExerciseDbBrowser />);
+    fireEvent.click(await screen.findByRole('button', { name: /barbell bench press/ }));
+    expect(screen.getByText('Lie on a bench.')).toBeDefined();
+    expect(search).toHaveBeenCalledTimes(1);
+  });
+  it('keeps saved entries available after an online error', async () => {
+    await db.externalExercises.put({ ...entry, savedAt: 100 });
+    vi.spyOn(api, 'searchExerciseDb').mockRejectedValue(new Error('ExerciseDB is rate-limiting requests.'));
+    render(<ExerciseDbBrowser />);
+    await screen.findByRole('button', { name: /barbell bench press/ });
+    fireEvent.change(screen.getByLabelText('ExerciseDB search'), { target: { value: 'squat' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: /barbell bench press/ })).toBeDefined();
+  });
+  it('does not show a stale response after the query changes', async () => {
+    let resolve!: (value: api.ExerciseDbPage) => void;
+    const search = vi.spyOn(api, 'searchExerciseDb').mockImplementation(() => new Promise((done) => { resolve = done; }));
+    render(<ExerciseDbBrowser />);
+    await screen.findByText('Your saved ExerciseDB library is empty');
+    fireEvent.change(screen.getByLabelText('ExerciseDB search'), { target: { value: 'bench' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(search).toHaveBeenCalled());
+    fireEvent.change(screen.getByLabelText('ExerciseDB search'), { target: { value: 'squat' } });
+    resolve({ entries: [entry], nextCursor: null, total: 1 });
+    await waitFor(() => expect(screen.queryByText('1 matches')).toBeNull());
+    expect(screen.queryByRole('button', { name: /barbell bench press/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Search' }).hasAttribute('disabled')).toBe(false);
+  });
+});

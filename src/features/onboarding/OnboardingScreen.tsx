@@ -7,7 +7,9 @@ import type {
   Plan,
 } from '../../data/types';
 import { EQUIPMENT, DEFAULT_EQUIPMENT } from '../../data/equipment';
-import { CATALOG, CATALOG_BY_ID, getExerciseImageUrl } from '../../data/catalog';
+import { CATALOG, CATALOG_BY_ID } from '../../data/catalog';
+import { ExercisePicture } from '../../design/ExercisePicture';
+import { Icon } from '../../design/Icon';
 import { generatePlan } from '../planner/engine';
 import * as db from '../../data/db';
 
@@ -180,6 +182,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 }) => {
   const [step, setStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState<boolean>(true);
 
   // Profile Form State
@@ -265,6 +268,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       disliked: initialProfile?.disliked || [],
       pinned: initialProfile?.pinned || [],
       favourites: initialProfile?.favourites || [],
+      weightUnit: initialProfile?.weightUnit ?? 'kg',
       onboarded: false,
     };
   }, [
@@ -406,16 +410,20 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   const handleStartTraining = useCallback(async () => {
     if (isSaving) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const finalProfile: UserProfile = {
         ...currentProfile,
         onboarded: true,
       };
-      await db.saveUserProfile(finalProfile);
-      await db.savePlan(generatedPlan);
+      await db.db.transaction('rw', db.db.profiles, db.db.plans, async () => {
+        await db.saveUserProfile(finalProfile);
+        await db.savePlan(generatedPlan);
+      });
       onComplete();
     } catch (err) {
       console.error('Failed to complete onboarding:', err);
+      setSaveError('Your preferences and plan could not be saved. Keep this screen open and try again.');
       setIsSaving(false);
     }
   }, [currentProfile, generatedPlan, isSaving, onComplete]);
@@ -430,7 +438,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               type="button"
               className="btn small-btn ghost"
               onClick={handleBack}
-              style={{ minHeight: 38, padding: '6px 12px' }}
+              style={{ minHeight: 44, padding: '6px 12px' }}
               aria-label="Back to previous step"
             >
               ← Back
@@ -683,7 +691,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                     type="button"
                     className="chip"
                     aria-pressed={equipmentCategory === cat}
-                    style={{ whiteSpace: 'nowrap', minHeight: 38, padding: '6px 12px', fontSize: 13 }}
+                    style={{ whiteSpace: 'nowrap', minHeight: 44, padding: '6px 12px', fontSize: 13 }}
                     onClick={() => setEquipmentCategory(cat)}
                   >
                     {cat}
@@ -1093,7 +1101,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   <div style={{ padding: '4px 0' }}>
                     {day.exercises.map((plannedEx, exIdx) => {
                       const ex = CATALOG_BY_ID[plannedEx.exerciseId];
-                      const thumb = ex ? getExerciseImageUrl(ex, 'start') : null;
 
                       return (
                         <div
@@ -1109,33 +1116,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                                 : 'none',
                           }}
                         >
-                          {/* Thumbnail / fallback icon */}
-                          <div
-                            style={{
-                              width: 44,
-                              height: 44,
-                              borderRadius: 8,
-                              background: 'var(--surface-2)',
-                              overflow: 'hidden',
-                              flexShrink: 0,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
-                            {thumb ? (
-                              <img
-                                src={thumb}
-                                alt={ex?.name ?? plannedEx.exerciseId}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLElement).style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <span style={{ fontSize: 20 }}>🏋️</span>
-                            )}
-                          </div>
+                          {ex ? <ExercisePicture exercise={ex} /> : <span className="exercise-picture small"><Icon name="exercise" /></span>}
 
                           {/* Exercise meta */}
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -1168,6 +1149,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
             {/* Large "Start Training" Button */}
             <div style={{ marginTop: 20, marginBottom: 40 }}>
+              {saveError && <p className="error-message" role="alert">{saveError}</p>}
               <button
                 type="button"
                 className="btn primary block"

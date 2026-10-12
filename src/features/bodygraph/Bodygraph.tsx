@@ -5,6 +5,7 @@ import { CATALOG, EXERCISE_BY_ID } from '../../data/catalog';
 import { getWorkoutSessions } from '../../data/db';
 import { BodygraphFigure, type HighlightValue } from './BodygraphFigure';
 import { MuscleDrawer } from './MuscleDrawer';
+import { calculateMuscleActivity } from './activity';
 import './Bodygraph.css';
 
 export type BodygraphMode = 'targets' | 'activity';
@@ -35,7 +36,7 @@ export interface BodygraphProps {
   selectedMuscle?: MuscleId | null;
   /** Callback when muscle is selected. */
   onSelectMuscle?: (muscleId: MuscleId | null) => void;
-  /** Callback when an exercise is chosen in the muscle drawer or picker. */
+  /** Callback when exercise details are explicitly requested from the muscle drawer. */
   onSelectExercise?: (exerciseId: string) => void;
   /** Render compact thumbnail version (disables flipper/drawer by default). */
   compact?: boolean;
@@ -61,9 +62,9 @@ export interface BodygraphProps {
  * Interactive Bodygraph Wrapper Component (§4.6, §5.1, §5.2, §8).
  *
  * Features:
- * - Front/Back toggle button with smooth 3D flip animation (perspective + rotateY).
+ * - Front/Back toggle with one mounted view, avoiding duplicate IDs and hidden tab stops.
  * - Mode A ('targets'): highlights primary & secondary muscles for an exercise or target list.
- * - Mode B ('activity'): calculates working sets logged per muscle from session history and shades heatmap.
+ * - Mode B ('activity'): shades primary completed working sets from completed sessions.
  * - Muscle click triggers the MuscleDrawer bottom sheet inspector.
  */
 export const Bodygraph: React.FC<BodygraphProps> = ({
@@ -187,45 +188,9 @@ export const Bodygraph: React.FC<BodygraphProps> = ({
         }
       }
     } else {
-      // Mode B: Activity Heatmap from logged working sets
-      const now = Date.now();
-      const cutoff =
-        timeWindow === 'week'
-          ? now - 7 * 24 * 60 * 60 * 1000
-          : timeWindow === 'month'
-            ? now - 30 * 24 * 60 * 60 * 1000
-            : 0;
-
-      const exerciseMap = new Map<string, Exercise>();
-      for (const ex of catalog) exerciseMap.set(ex.id, ex);
-
-      const muscleVolume: Partial<Record<MuscleId, number>> = {};
-
-      for (const s of effectiveSessions) {
-        const time = s.endedAt ?? s.startedAt;
-        if (cutoff > 0 && time < cutoff) continue;
-
-        for (const item of s.items) {
-          const ex = exerciseMap.get(item.exerciseId);
-          if (!ex) continue;
-
-          const doneSets =
-            item.sets.filter((st) => st.done).length ||
-            (s.state === 'done' ? item.sets.length : 0);
-
-          if (doneSets === 0) continue;
-
-          for (const m of ex.primary) {
-            muscleVolume[m] = (muscleVolume[m] ?? 0) + doneSets;
-          }
-          for (const m of ex.secondary) {
-            muscleVolume[m] = (muscleVolume[m] ?? 0) + Math.round(doneSets * 0.5);
-          }
-        }
-      }
-
+      const activity = calculateMuscleActivity(effectiveSessions, catalog, timeWindow);
       for (const m of MUSCLES) {
-        map[m.id] = muscleVolume[m.id] ?? 0;
+        map[m.id] = activity.primary[m.id] ?? 0;
       }
     }
 
@@ -275,14 +240,14 @@ export const Bodygraph: React.FC<BodygraphProps> = ({
             aria-pressed={currentMode === 'targets'}
             onClick={() => setInternalMode('targets')}
           >
-            Mode A · Targets
+            Exercise targets
           </button>
           <button
             type="button"
             aria-pressed={currentMode === 'activity'}
             onClick={() => setInternalMode('activity')}
           >
-            Mode B · Activity
+            Training activity
           </button>
         </div>
       )}
@@ -296,7 +261,6 @@ export const Bodygraph: React.FC<BodygraphProps> = ({
             value={pickerExerciseId}
             onChange={(e) => {
               setPickerExerciseId(e.target.value);
-              onSelectExercise?.(e.target.value);
             }}
           >
             {catalog.map((ex) => (
@@ -335,36 +299,26 @@ export const Bodygraph: React.FC<BodygraphProps> = ({
         </div>
       )}
 
-      {/* 3D Flip Card Container */}
+      {/* Only the visible view is mounted: no hidden tab stops or duplicate muscle IDs. */}
       <div className="bodygraph-card">
         <div
           className={`bodygraph-flipper ${view === 'back' ? 'is-back' : ''}`}
           role="region"
-          aria-label={`Interactive 3D Bodygraph, showing ${view} view`}
+          aria-label={`Interactive bodygraph, showing ${view} view`}
         >
-          {/* Front Face */}
-          <div className="bodygraph-face bodygraph-face-front" aria-hidden={view === 'back'}>
+          <div className="bodygraph-face">
             <BodygraphFigure
-              view="front"
+              view={view}
               highlightMap={highlightMap}
               selectedMuscle={activeMuscle}
               onSelectMuscle={handleMuscleClick}
             />
           </div>
 
-          {/* Back Face */}
-          <div className="bodygraph-face bodygraph-face-back" aria-hidden={view === 'front'}>
-            <BodygraphFigure
-              view="back"
-              highlightMap={highlightMap}
-              selectedMuscle={activeMuscle}
-              onSelectMuscle={handleMuscleClick}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Front / Back Flip Button */}
+      {/* Front / Back view buttons */}
       {showViewToggle && (
         <div className="seg bodygraph-view-toggle" role="group" aria-label="Anatomical view selector">
           <button
@@ -390,40 +344,50 @@ export const Bodygraph: React.FC<BodygraphProps> = ({
           {currentMode === 'targets' ? (
             <>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#FF4757' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-primary)' }} />
                 <span>Primary Target</span>
               </div>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#00D2FF' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-secondary)' }} />
                 <span>Secondary Target</span>
               </div>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#202633' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-neutral)' }} />
                 <span>Not Targeted</span>
               </div>
             </>
           ) : (
             <>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#202633' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-neutral)' }} />
                 <span>0 sets</span>
               </div>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#123854' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-activity-low)' }} />
                 <span>1–3 sets</span>
               </div>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#0284c7' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-activity-mid)' }} />
                 <span>4–7 sets</span>
               </div>
               <div className="bodygraph-legend-item">
-                <span className="bodygraph-legend-dot" style={{ background: '#00e5ff' }} />
+                <span className="bodygraph-legend-dot" style={{ background: 'var(--muscle-activity-high)' }} />
                 <span>8+ sets</span>
               </div>
             </>
           )}
         </div>
       )}
+
+      <details className="bodygraph-muscle-list">
+        <summary>Choose a muscle from a list</summary>
+        <div className="bodygraph-muscle-buttons">
+          {MUSCLES.map((muscle) => (
+            <button type="button" key={muscle.id} aria-pressed={activeMuscle === muscle.id}
+              onClick={() => handleMuscleClick(muscle.id)}>{muscle.short}</button>
+          ))}
+        </div>
+      </details>
 
       {/* Muscle Inspector Bottom Sheet Drawer */}
       <MuscleDrawer

@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Exercise, LocationType, Movement, MuscleId, UserProfile } from '../../data/types';
 import { MUSCLES, MUSCLE_BY_ID } from '../../data/muscles';
-import { equipmentLabel, DEFAULT_EQUIPMENT } from '../../data/equipment';
-import { CATALOG, CATALOG_BY_ID, getExerciseImageUrl } from '../../data/catalog';
+import { equipmentLabel, DEFAULT_EQUIPMENT, EQUIPMENT } from '../../data/equipment';
+import { CATALOG, CATALOG_BY_ID } from '../../data/catalog';
 import { getUserProfile, toggleFavourite } from '../../data/db';
 import { ExerciseDetailSheet } from './ExerciseDetailSheet';
 import './ExerciseLibrary.css';
+import { Icon } from '../../design/Icon';
+import { ExercisePicture } from '../../design/ExercisePicture';
+import { Modal } from '../../design/Modal';
+import { ExerciseDbBrowser } from './ExerciseDbBrowser';
 
 export interface ExerciseLibraryScreenProps {
   onSelectExercise?: (exerciseId: string) => void;
@@ -61,6 +65,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
 }) => {
   // Search query
   const [searchQuery, setSearchQuery] = useState('');
+  const [catalogueSource, setCatalogueSource] = useState<'local' | 'exercisedb'>('local');
 
   // Filters state
   const [locationFilter, setLocationFilter] = useState<LocationType | 'all'>('all');
@@ -69,6 +74,10 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
   const [movementFilter, setMovementFilter] = useState<string>('all');
   const [difficultyFilter, setDifficultyFilter] = useState<number | 'all'>('all');
   const [favouritesOnly, setFavouritesOnly] = useState<boolean>(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [equipmentFilter, setEquipmentFilter] = useState('all');
+  const [muscleRole, setMuscleRole] = useState<'any' | 'primary' | 'secondary'>('any');
+  const [notice, setNotice] = useState<string | null>(null);
 
   // Pagination limit
   const [visibleCount, setVisibleCount] = useState<number>(PAGE_SIZE);
@@ -113,6 +122,8 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
     movementFilter,
     difficultyFilter,
     favouritesOnly,
+    equipmentFilter,
+    muscleRole,
   ]);
 
   // Available equipment by location
@@ -171,8 +182,8 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
       // 4. Muscle filter (primary or secondary)
       if (activeMuscleIds) {
         const matchesMuscle =
-          ex.primary.some((m) => activeMuscleIds.has(m)) ||
-          ex.secondary.some((m) => activeMuscleIds.has(m));
+          (muscleRole !== 'secondary' && ex.primary.some((m) => activeMuscleIds.has(m))) ||
+          (muscleRole !== 'primary' && ex.secondary.some((m) => activeMuscleIds.has(m)));
         if (!matchesMuscle) return false;
       }
 
@@ -183,6 +194,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
       }
 
       // 6. Fast instant search query matching
+      if (equipmentFilter !== 'all' && !ex.equipmentIds.includes(equipmentFilter)) return false;
       if (q) {
         // Name check
         if (ex.name.toLowerCase().includes(q)) return true;
@@ -221,6 +233,8 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
     activeMovementPatterns,
     activeMuscleIds,
     locationEquipmentSet,
+    equipmentFilter,
+    muscleRole,
   ]);
 
   // Active filters count
@@ -231,7 +245,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
     specificMuscle !== 'all' ||
     movementFilter !== 'all' ||
     difficultyFilter !== 'all' ||
-    favouritesOnly;
+    favouritesOnly || equipmentFilter !== 'all' || muscleRole !== 'any';
 
   const handleResetFilters = () => {
     setSearchQuery('');
@@ -241,6 +255,8 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
     setMovementFilter('all');
     setDifficultyFilter('all');
     setFavouritesOnly(false);
+    setEquipmentFilter('all');
+    setMuscleRole('any');
   };
 
   // Toggle favorite on card
@@ -257,14 +273,15 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
       const updatedProfile = await getUserProfile();
       setProfile(updatedProfile);
     } catch (err) {
+      setNotice('Favourite could not be saved. Try again.');
       console.error('Failed to toggle favourite on card', err);
     }
   };
 
   // Open Exercise Detail
   const handleOpenExercise = (ex: Exercise) => {
-    setSelectedExercise(ex);
-    externalOnSelectExercise?.(ex.id);
+    if (externalOnSelectExercise) externalOnSelectExercise(ex.id);
+    else setSelectedExercise(ex);
   };
 
   const visibleExercises = filteredExercises.slice(0, visibleCount);
@@ -275,13 +292,16 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
       {/* Screen Header */}
       <div style={{ marginBottom: 4 }}>
         <h1 className="h-hero">Exercise Library</h1>
-        <p className="sub">Explore and filter all 644 exercises with biomechanics and cues.</p>
+        <p className="sub">Find your next movement. Learn how to make it count.</p>
       </div>
+
+      <div className="seg" role="group" aria-label="Exercise catalogue source"><button type="button" aria-pressed={catalogueSource === 'local'} onClick={() => setCatalogueSource('local')}>Training library</button><button type="button" aria-pressed={catalogueSource === 'exercisedb'} onClick={() => setCatalogueSource('exercisedb')}>ExerciseDB</button></div>
+      {catalogueSource === 'exercisedb' ? <ExerciseDbBrowser /> : <>
 
       {/* Fast Instant Search Bar (§4.5) */}
       <div className="ex-search-wrap">
         <span className="ex-search-icon" aria-hidden="true">
-          🔍
+          <Icon name="search" />
         </span>
         <input
           type="search"
@@ -298,12 +318,17 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
             onClick={() => setSearchQuery('')}
             aria-label="Clear search"
           >
-            ✕
+            <Icon name="close" size={18} />
           </button>
         )}
       </div>
 
-      {/* Filter Controls & Chips (§4.5) */}
+      <div className="row between">
+        <button type="button" className="btn ghost small-btn" onClick={() => setFiltersOpen(true)}><Icon name="filter" size={18} />Filters{hasActiveFilters ? ' · active' : ''}</button>
+        <button type="button" className={`btn small-btn ${favouritesOnly ? 'accent' : 'ghost'}`} aria-pressed={favouritesOnly} onClick={() => setFavouritesOnly(!favouritesOnly)}><Icon name="star" size={18} />Favourites</button>
+      </div>
+      {notice && <p role="alert" className="error-message">{notice}</p>}
+      <Modal open={filtersOpen} title="Filter exercises" onClose={() => setFiltersOpen(false)}>
       <div className="ex-filters">
         {/* 1. Location Filter: All, Home, Gym, Travel */}
         <div className="ex-filter-group">
@@ -328,7 +353,6 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
                   role="radio"
                   aria-checked={isActive}
                 >
-                  {loc === 'home' ? '🏠 ' : loc === 'gym' ? '🏋️ ' : loc === 'travel' ? '✈️ ' : ''}
                   {label}
                 </button>
               );
@@ -450,7 +474,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
               onClick={() => setFavouritesOnly(!favouritesOnly)}
               aria-pressed={favouritesOnly}
             >
-              ★ Favourites Only
+              <Icon name="star" size={16} /> Favourites Only
             </button>
 
             {/* Difficulty Chips */}
@@ -484,7 +508,11 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
             </button>
           </div>
         </div>
+        <div className="field"><label htmlFor="equipment-filter">Exact equipment</label><select id="equipment-filter" className="input" value={equipmentFilter} onChange={(event) => setEquipmentFilter(event.target.value)}><option value="all">Any equipment</option>{EQUIPMENT.map((equipment) => <option key={equipment.id} value={equipment.id}>{equipment.label}</option>)}</select></div>
+        <div className="field"><label htmlFor="muscle-role-filter">Muscle involvement</label><select id="muscle-role-filter" className="input" value={muscleRole} onChange={(event) => setMuscleRole(event.target.value as typeof muscleRole)}><option value="any">Primary or secondary</option><option value="primary">Primary only</option><option value="secondary">Secondary only</option></select></div>
+        <button type="button" className="btn primary block" onClick={() => setFiltersOpen(false)}>Show {filteredExercises.length} exercises</button>
       </div>
+      </Modal>
 
       {/* Matching Count Header & Reset Filters Bar */}
       <div className="ex-count-bar">
@@ -500,10 +528,9 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
 
       {/* Exercise Cards List (§4.5) */}
       {filteredExercises.length > 0 ? (
-        <div className="ex-list" role="list">
+        <ul className="ex-list">
           {visibleExercises.map((ex) => {
             const isFav = favouritesSet.has(ex.id);
-            const thumbUrl = getExerciseImageUrl(ex, 'start') ?? `/repdb-images/flat/${ex.id}-start.webp`;
             const primaryMuscleName =
               ex.primary.length > 0
                 ? MUSCLE_BY_ID[ex.primary[0]]?.short || ex.primary[0]
@@ -514,36 +541,12 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
               ex.difficulty === 1 ? 'Beginner' : ex.difficulty === 2 ? 'Intermediate' : 'Advanced';
 
             return (
-              <div
+              <li
                 key={ex.id}
-                role="listitem"
                 className="ex-card"
-                onClick={() => handleOpenExercise(ex)}
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handleOpenExercise(ex);
-                  }
-                }}
               >
-                {/* Illustration Thumbnail */}
-                <div className="ex-thumb-wrap">
-                  <img
-                    src={thumbUrl}
-                    alt=""
-                    className="ex-thumb-img"
-                    loading="lazy"
-                    onError={(e) => {
-                      const target = e.target as HTMLElement;
-                      target.style.display = 'none';
-                      const parent = target.parentElement;
-                      if (parent) {
-                        parent.innerHTML = '<span class="ex-thumb-placeholder">🏋️</span>';
-                      }
-                    }}
-                  />
-                </div>
+                <button type="button" className="ex-card-main" onClick={() => handleOpenExercise(ex)}>
+                <ExercisePicture exercise={ex} />
 
                 {/* Exercise Info */}
                 <div className="ex-card-content">
@@ -571,6 +574,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
                     )}
                   </div>
                 </div>
+                </button>
 
                 {/* Favorite Star Toggle Button */}
                 <button
@@ -580,26 +584,25 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
                   aria-label={isFav ? `Remove ${ex.name} from favourites` : `Add ${ex.name} to favourites`}
                   title={isFav ? 'Remove favourite' : 'Add favourite'}
                 >
-                  {isFav ? '★' : '☆'}
+                  <Icon name="star" />
                 </button>
-              </div>
+              </li>
             );
           })}
 
           {/* Load More Button if remaining */}
           {remainingCount > 0 && (
+            <li>
             <button
-              type="button"
-              className="ex-load-more-btn"
-              onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-            >
+              type="button" className="ex-load-more-btn" onClick={() => setVisibleCount((prev) => prev + PAGE_SIZE)}>
               Show More ({remainingCount} remaining)
             </button>
+            </li>
           )}
-        </div>
+        </ul>
       ) : (
         <div className="empty">
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🔍</div>
+          <Icon name="search" size={32} />
           <strong>No matching exercises found</strong>
           <p style={{ margin: '6px 0 14px' }}>
             Try adjusting your search keywords, location equipment, or muscle group filters.
@@ -627,8 +630,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
         onClose={() => setSelectedExercise(null)}
         onSelectExercise={(id) => {
           if (CATALOG_BY_ID[id]) {
-            setSelectedExercise(CATALOG_BY_ID[id]);
-            externalOnSelectExercise?.(id);
+            handleOpenExercise(CATALOG_BY_ID[id]);
           }
         }}
         userProfile={profile}
@@ -640,6 +642,7 @@ export const ExerciseLibraryScreen: React.FC<ExerciseLibraryScreenProps> = ({
         onAddToWorkout={onAddToWorkout}
         onSubstitute={onSubstitute}
       />
+      </>}
     </div>
   );
 };

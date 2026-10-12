@@ -5,24 +5,43 @@ import type {
   Plan,
   WorkoutSession,
   ExerciseFeedback,
+  Routine,
 } from './types';
 
+const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
+const text = (value: unknown): value is string => typeof value === 'string' && !!value.trim();
+const stringList = (value: unknown): value is string[] => Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+const location = (value: unknown) => typeof value === 'string' && ['home', 'gym', 'travel'].includes(value);
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+const optionalBoolean = (value: unknown) => value === undefined || typeof value === 'boolean';
+const optionalTimestamp = (value: unknown) => value === undefined || (finite(value) && value >= 0);
+function validPlannedExercise(value: unknown): boolean {
+  return isRecord(value) && text(value.exerciseId) && finite(value.sets) && Number.isInteger(value.sets) && value.sets >= 1 && value.sets <= 30 &&
+    text(value.reps) && finite(value.restSec) && value.restSec >= 0 && value.restSec <= 1800 && typeof value.reason === 'string';
+}
+function validSession(value: unknown): boolean {
+  return isRecord(value) && text(value.id) && typeof value.title === 'string' && location(value.location) && finite(value.startedAt) &&
+    ['active', 'done'].includes(String(value.state)) && optionalTimestamp(value.endedAt) && optionalTimestamp(value.pausedAt) && optionalTimestamp(value.pausedMs) &&
+    (value.planId === undefined || typeof value.planId === 'string') && (value.dayId === undefined || typeof value.dayId === 'string') &&
+    Array.isArray(value.items) && value.items.every((item) => isRecord(item) && text(item.exerciseId) && optionalBoolean(item.skipped) && optionalBoolean(item.discomfort) &&
+      (item.planned === undefined || validPlannedExercise(item.planned)) && Array.isArray(item.sets) && item.sets.every((set) => isRecord(set) && typeof set.done === 'boolean' &&
+        (set.loadKg === null || (finite(set.loadKg) && set.loadKg >= 0)) && (set.reps === null || (finite(set.reps) && Number.isInteger(set.reps) && set.reps >= 0)) &&
+        (set.kind === undefined || set.kind === 'warmup' || set.kind === 'working') && (set.effort === undefined || (finite(set.effort) && [1, 2, 3].includes(set.effort)))));
+}
+
 export async function exportBackup(): Promise<string> {
-  const profile = (await db.profiles.toCollection().first()) ?? null;
-  const plans = await db.plans.toArray();
-  const sessions = await db.sessions.toArray();
-  const feedback = await db.feedback.toArray();
+  return db.transaction('r', [db.profiles, db.plans, db.sessions, db.feedback, db.routines, db.activeWorkout], async () => {
+    const profile = (await db.profiles.toCollection().first()) ?? null;
+    const plans = await db.plans.toArray();
+    const sessions = await db.sessions.toArray();
+    const feedback = await db.feedback.toArray();
+    const routines = await db.routines.toArray();
+    const activeWorkout = (await db.activeWorkout.get('active'))?.session ?? null;
 
-  const backupDoc: BackupDoc = {
-    schema: 1,
-    exportedAt: Date.now(),
-    profile,
-    plans,
-    sessions,
-    feedback,
-  };
+    const backupDoc: BackupDoc = { schema: 1, exportedAt: Date.now(), profile, plans, sessions, feedback, routines, activeWorkout };
 
-  return JSON.stringify(backupDoc, null, 2);
+    return JSON.stringify(backupDoc, null, 2);
+  });
 }
 
 export async function importBackup(
@@ -53,7 +72,7 @@ export async function importBackup(
     };
   }
 
-  if (typeof raw.exportedAt !== 'number' || Number.isNaN(raw.exportedAt)) {
+  if (!finite(raw.exportedAt)) {
     return { success: false, error: 'Invalid or missing exportedAt timestamp' };
   }
 
@@ -64,6 +83,16 @@ export async function importBackup(
     const prof = raw.profile as Record<string, unknown>;
     if (typeof prof.displayName !== 'string' || !prof.displayName.trim()) {
       return { success: false, error: 'Invalid profile: missing displayName' };
+    }
+    if (!['strength','fitness','technique','endurance','mobility'].includes(String(prof.goal)) ||
+      !['new','some','experienced'].includes(String(prof.experience)) || !location(prof.activeLocation) ||
+      !isRecord(prof.equipment) || !['home','gym','travel'].every((place) => stringList((prof.equipment as Record<string,unknown>)[place])) ||
+      !finite(prof.daysPerWeek) || !Number.isInteger(prof.daysPerWeek) || prof.daysPerWeek < 2 || prof.daysPerWeek > 6 || !finite(prof.durationMin) || ![30,45,60].includes(prof.durationMin) ||
+      !stringList(prof.weekdays) || !prof.weekdays.every((day) => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].includes(day)) ||
+      !['restrictions','liked','disliked','pinned','favourites'].every((key) => prof[key] === undefined || stringList(prof[key])) ||
+      typeof prof.discomfortNotes !== 'string' || typeof prof.otherSports !== 'string' || typeof prof.onboarded !== 'boolean' ||
+      (prof.weightUnit !== undefined && prof.weightUnit !== 'kg' && prof.weightUnit !== 'lb')) {
+      return { success: false, error: 'Invalid profile preferences or equipment' };
     }
   }
 
@@ -80,6 +109,12 @@ export async function importBackup(
     if (typeof p.id !== 'string' || !p.id.trim()) {
       return { success: false, error: `Invalid plan at index ${i}: missing valid id` };
     }
+    if (!finite(p.createdAt) || !location(p.location) || !['strength','fitness','technique','endurance','mobility'].includes(String(p.goal)) ||
+      !['new','some','experienced'].includes(String(p.experience)) || typeof p.split !== 'string' || !stringList(p.explanation) ||
+      !Array.isArray(p.days) || !p.days.every((day) => isRecord(day) && text(day.id) && typeof day.label === 'string' && typeof day.focus === 'string' &&
+        stringList(day.movementTargets) && Array.isArray(day.exercises) && day.exercises.every(validPlannedExercise))) {
+      return { success: false, error: `Invalid plan structure at index ${i}` };
+    }
   }
 
   if (!Array.isArray(raw.sessions)) {
@@ -95,6 +130,7 @@ export async function importBackup(
     if (typeof s.id !== 'string' || !s.id.trim()) {
       return { success: false, error: `Invalid session at index ${i}: missing valid id` };
     }
+    if (!validSession(s)) return { success: false, error: `Invalid session structure at index ${i}` };
   }
 
   if (!Array.isArray(raw.feedback)) {
@@ -110,15 +146,28 @@ export async function importBackup(
     if (typeof f.exerciseId !== 'string' || !f.exerciseId.trim()) {
       return { success: false, error: `Invalid feedback at index ${i}: missing valid exerciseId` };
     }
+    if (!finite(f.updatedAt) || !optionalBoolean(f.liked) || !optionalBoolean(f.discomfort)) return { success: false, error: `Invalid feedback at index ${i}` };
   }
 
   const validatedProfile = (raw.profile ? (raw.profile as UserProfile) : null);
   const validatedPlans = raw.plans as Plan[];
   const validatedSessions = raw.sessions as WorkoutSession[];
   const validatedFeedback = raw.feedback as ExerciseFeedback[];
+  if (raw.routines !== undefined && (!Array.isArray(raw.routines) || raw.routines.some((entry) => {
+    if (!entry || typeof entry !== 'object') return true;
+    const routine = entry as Routine;
+    return typeof routine.id !== 'string' || !routine.id || typeof routine.title !== 'string' || !routine.title.trim() ||
+      !['home', 'gym', 'travel'].includes(routine.location) || !Number.isFinite(routine.createdAt) || !Number.isFinite(routine.updatedAt) ||
+      !Array.isArray(routine.exercises) || !routine.exercises.length || !routine.exercises.every(validPlannedExercise);
+  }))) return { success: false, error: 'Invalid saved routines in backup' };
+  const validatedRoutines = (raw.routines ?? []) as Routine[];
+  const restoredActive = raw.activeWorkout as WorkoutSession | null | undefined;
+  if (restoredActive !== undefined && restoredActive !== null && (!validSession(restoredActive) || restoredActive.state !== 'active')) {
+    return { success: false, error: 'Invalid active workout in backup' };
+  }
 
   try {
-    await db.transaction('rw', [db.profiles, db.plans, db.sessions, db.feedback, db.activeWorkout], async () => {
+    await db.transaction('rw', [db.profiles, db.plans, db.sessions, db.feedback, db.activeWorkout, db.routines], async () => {
       await db.profiles.clear();
       if (validatedProfile) {
         await db.profiles.put(validatedProfile);
@@ -140,6 +189,12 @@ export async function importBackup(
       }
 
       await db.activeWorkout.clear();
+      if (restoredActive) {
+        await db.activeWorkout.put({ id: 'active', session: restoredActive, updatedAt: Date.now() });
+        await db.sessions.put(restoredActive);
+      }
+      await db.routines.clear();
+      if (validatedRoutines.length) await db.routines.bulkAdd(validatedRoutines);
     });
 
     return { success: true };

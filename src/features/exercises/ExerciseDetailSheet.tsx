@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Exercise, MuscleId, UserProfile, WorkoutSession, SessionItem } from '../../data/types';
 import { MUSCLE_BY_ID } from '../../data/muscles';
 import { equipmentLabel, DEFAULT_EQUIPMENT } from '../../data/equipment';
-import { getExerciseImageUrl, findSubstitutes } from '../../data/catalog';
+import { findSubstitutes } from '../../data/catalog';
 import {
   getUserProfile,
   toggleFavourite,
@@ -12,6 +12,9 @@ import {
 } from '../../data/db';
 import { BodygraphFigure, type HighlightValue } from '../bodygraph';
 import './ExerciseLibrary.css';
+import { Modal } from '../../design/Modal';
+import { ExercisePicture } from '../../design/ExercisePicture';
+import { Icon } from '../../design/Icon';
 
 export interface ExerciseDetailSheetProps {
   exercise: Exercise | null;
@@ -25,6 +28,7 @@ export interface ExerciseDetailSheetProps {
   workoutMode?: boolean;
   onAddToWorkout?: (exercise: Exercise) => void;
   onSubstitute?: (exercise: Exercise) => void;
+  allowAddToActiveWorkout?: boolean;
 }
 
 export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
@@ -37,14 +41,15 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
   workoutMode = false,
   onAddToWorkout,
   onSubstitute,
+  allowAddToActiveWorkout = true,
 }) => {
   const [pose, setPose] = useState<'start' | 'peak'>('start');
-  const [imageError, setImageError] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile ?? null);
   const [isFav, setIsFav] = useState(false);
   const [isAvoided, setIsAvoided] = useState(false);
   const [activeSession, setActiveSession] = useState<WorkoutSession | null>(null);
   const [actionSuccessNotice, setActionSuccessNotice] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Close on Escape key
   useEffect(() => {
@@ -61,8 +66,8 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
   // Reset pose and image error on exercise change
   useEffect(() => {
     setPose('start');
-    setImageError(false);
     setActionSuccessNotice(null);
+    setActionError(null);
   }, [exercise?.id]);
 
   // Sync profile & active session from DB
@@ -110,8 +115,8 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
   // Substitute exercises matching current available equipment
   const substitutes = useMemo(() => {
     if (!exercise) return [];
-    return findSubstitutes(exercise.id, availableEquipment).slice(0, 5);
-  }, [exercise, availableEquipment]);
+    return findSubstitutes(exercise.id, availableEquipment).filter((candidate) => !profile?.restrictions.includes(candidate.id) && candidate.difficulty <= (profile?.experience === 'experienced' ? 3 : profile?.experience === 'some' ? 2 : 1)).slice(0, 5);
+  }, [exercise, availableEquipment, profile]);
 
   // Toggle Favourite
   const handleToggleFavourite = async () => {
@@ -123,6 +128,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
       setProfile(updatedProfile);
       onProfileUpdated?.(updatedProfile);
     } catch (err) {
+      setActionError('Favourite could not be saved. Try again.');
       console.error('Failed to toggle favourite', err);
     }
   };
@@ -142,6 +148,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
           : 'Exercise removed from restrictions',
       );
     } catch (err) {
+      setActionError('Restriction could not be saved. Try again.');
       console.error('Failed to toggle restriction', err);
     }
   };
@@ -156,7 +163,9 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
       return;
     }
 
-    if (activeSession) {
+    try {
+    const latestActive = await getActiveWorkout();
+    if (latestActive) {
       const newItem: SessionItem = {
         exerciseId: exercise.id,
         sets: [
@@ -166,13 +175,14 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
         ],
       };
       const updatedSession: WorkoutSession = {
-        ...activeSession,
-        items: [...activeSession.items, newItem],
+        ...latestActive,
+        items: [...latestActive.items, newItem],
       };
       await saveActiveWorkout(updatedSession);
       setActiveSession(updatedSession);
       setActionSuccessNotice(`Added ${exercise.name} to active workout!`);
     }
+    } catch { setActionError('Exercise could not be added. Try again.'); }
   };
 
   // Handle Substitute
@@ -185,32 +195,11 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
     return null;
   }
 
-  // Illustration URL calculation
-  const repdbUrl = getExerciseImageUrl(exercise, pose);
-  const fallbackUrl = `/repdb-images/flat/${exercise.id}-${pose}.webp`;
-  const imageSrc = !imageError ? (repdbUrl ?? fallbackUrl) : null;
-
   const difficultyText =
     exercise.difficulty === 1 ? 'Beginner' : exercise.difficulty === 2 ? 'Intermediate' : 'Advanced';
 
   return (
-    <>
-      {/* Backdrop scrim */}
-      <div
-        className="scrim"
-        onClick={onClose}
-        role="presentation"
-        aria-hidden="true"
-      />
-
-      {/* Bottom Sheet Dialog */}
-      <section
-        className="sheet detail-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="exercise-detail-title"
-      >
-        <div className="grab" onClick={onClose} role="button" aria-label="Dismiss detail sheet" />
+    <Modal open={isOpen} title={exercise.name} onClose={onClose}>
 
         {/* Header with Title, Badges & Close Button */}
         <div className="detail-header">
@@ -223,7 +212,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                   textTransform: 'uppercase',
                   letterSpacing: '0.6px',
                   color: 'var(--action, #57B9FA)',
-                  background: 'rgba(87, 185, 250, 0.14)',
+                   background: 'var(--surface-2)',
                   padding: '2px 8px',
                   borderRadius: 6,
                 }}
@@ -244,13 +233,10 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                     borderRadius: 6,
                   }}
                 >
-                  ⚠️ Avoided
+                  Avoided
                 </span>
               )}
             </div>
-            <h2 id="exercise-detail-title" className="detail-title">
-              {exercise.name}
-            </h2>
             {exercise.aliases && exercise.aliases.length > 0 && (
               <div className="detail-aliases">
                 Also known as: {exercise.aliases.join(', ')}
@@ -258,15 +244,8 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
             )}
           </div>
 
-          <button
-            type="button"
-            className="detail-close-btn"
-            onClick={onClose}
-            aria-label="Close details"
-          >
-            ✕
-          </button>
         </div>
+        {actionError && <p className="error-message" role="alert">{actionError}</p>}
 
         {/* Action Success Toast / Notice */}
         {actionSuccessNotice && (
@@ -284,14 +263,8 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
               justifyContent: 'space-between',
             }}
           >
-            <span>✓ {actionSuccessNotice}</span>
-            <button
-              type="button"
-              onClick={() => setActionSuccessNotice(null)}
-              style={{ background: 'none', border: 0, color: 'inherit', cursor: 'pointer', fontSize: 13 }}
-            >
-              ✕
-            </button>
+              <span>{actionSuccessNotice}</span>
+              <button type="button" className="icon-btn" aria-label="Dismiss notice" onClick={() => setActionSuccessNotice(null)}><Icon name="close" size={16} /></button>
           </div>
         )}
 
@@ -319,23 +292,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
               </button>
             </div>
 
-            <div className="detail-img-box">
-              {imageSrc ? (
-                <img
-                  src={imageSrc}
-                  alt={`${exercise.name} - ${pose} pose`}
-                  className="detail-img"
-                  loading="eager"
-                  onError={() => setImageError(true)}
-                />
-              ) : (
-                <div style={{ textAlign: 'center', color: 'var(--text-2, #94A3B8)' }}>
-                  <div style={{ fontSize: 32, marginBottom: 6 }}>🏋️‍♂️</div>
-                  <div style={{ fontSize: 13 }}>Illustration preview for {pose} pose</div>
-                  <div style={{ fontSize: 11, opacity: 0.7, marginTop: 2 }}>{exercise.name}</div>
-                </div>
-              )}
-            </div>
+            <ExercisePicture exercise={exercise} pose={pose} large />
           </div>
 
           {/* Quick Action Buttons Bar */}
@@ -346,7 +303,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
               onClick={handleToggleFavourite}
               aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
             >
-              <span>{isFav ? '★ Favourited' : '☆ Add to Favs'}</span>
+              <Icon name="star" size={18} /><span>{isFav ? 'Favourited' : 'Favourite'}</span>
             </button>
             <button
               type="button"
@@ -354,7 +311,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
               onClick={handleToggleAvoid}
               aria-label={isAvoided ? 'Remove discomfort restriction' : 'Flag discomfort and avoid'}
             >
-              <span>{isAvoided ? '⚠️ Avoided' : '🛡 Avoid Exercise'}</span>
+              <Icon name="shield" size={18} /><span>{isAvoided ? 'Avoided' : 'Avoid exercise'}</span>
             </button>
           </div>
 
@@ -365,23 +322,23 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
               className="btn primary block"
               onClick={handleSubstitute}
             >
-              ⇄ Substitute Current Exercise
+              Substitute current exercise
             </button>
-          ) : workoutMode || onAddToWorkout || activeSession ? (
+          ) : workoutMode || onAddToWorkout || (activeSession && allowAddToActiveWorkout) ? (
             <button
               type="button"
               className="btn primary block"
               onClick={handleAddToWorkout}
             >
-              ＋ Add to Workout
+              Add to workout
             </button>
           ) : null}
 
           {/* Mini Bodygraph Section (§4.5, §4.6) */}
           <div className="detail-bodygraph-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="ex-filter-label">Anatomical Muscle Targets</span>
-              <span style={{ fontSize: 11, color: 'var(--text-2, #94A3B8)' }}>RepDB Biomechanics</span>
+              <span className="ex-filter-label">Muscle targets</span>
+              <span className="small">Classification, not measured activation</span>
             </div>
 
             <div className="detail-bodygraph-figures">
@@ -463,7 +420,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
           {exercise.cues && exercise.cues.length > 0 && (
             <div className="callout-box cues">
               <div className="callout-title">
-                <span>💡</span> Coach Cues
+                Coach Cues
               </div>
               <ul className="callout-list">
                 {exercise.cues.map((cue, idx) => (
@@ -477,7 +434,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
           {exercise.mistakes && exercise.mistakes.length > 0 && (
             <div className="callout-box mistakes">
               <div className="callout-title">
-                <span>⚠️</span> Common Mistakes to Avoid
+                Common Mistakes to Avoid
               </div>
               <ul className="callout-list">
                 {exercise.mistakes.map((mistake, idx) => (
@@ -499,7 +456,6 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
             {substitutes.length > 0 ? (
               <div className="substitutes-list">
                 {substitutes.map((sub) => {
-                  const subImg = getExerciseImageUrl(sub, 'start') ?? `/repdb-images/flat/${sub.id}-start.webp`;
                   return (
                     <button
                       key={sub.id}
@@ -510,16 +466,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                       }}
                       title={`Inspect ${sub.name}`}
                     >
-                      <div className="substitute-thumb">
-                        <img
-                          src={subImg}
-                          alt=""
-                          loading="lazy"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      </div>
+                      <ExercisePicture exercise={sub} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 650, color: 'var(--text, #F8FAFC)' }}>
                           {sub.name}
@@ -555,7 +502,6 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
             </a>
           </footer>
         </div>
-      </section>
-    </>
+    </Modal>
   );
 };

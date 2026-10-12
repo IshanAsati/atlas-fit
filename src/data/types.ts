@@ -77,6 +77,8 @@ export interface UserProfile {
   pinned: string[];
   favourites: string[];
   onboarded: boolean;
+  /** Display only; stored loads always remain kilograms. */
+  weightUnit?: 'kg' | 'lb';
 }
 
 export interface PlannedExercise {
@@ -113,6 +115,7 @@ export interface PerformedSet {
   done: boolean;
   /** 1 easy · 2 right · 3 hard */
   effort?: 1 | 2 | 3;
+  kind?: 'warmup' | 'working';
 }
 
 export interface SessionItem {
@@ -120,6 +123,7 @@ export interface SessionItem {
   planned?: PlannedExercise;
   sets: PerformedSet[];
   skipped?: boolean;
+  discomfort?: boolean;
 }
 
 export interface WorkoutSession {
@@ -132,6 +136,17 @@ export interface WorkoutSession {
   endedAt?: number;
   state: 'active' | 'done';
   items: SessionItem[];
+  pausedAt?: number;
+  pausedMs?: number;
+}
+
+export interface Routine {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  location: LocationType;
+  exercises: PlannedExercise[];
 }
 
 export interface ExerciseFeedback {
@@ -148,4 +163,6 @@ export interface BackupDoc {
   plans: Plan[];
   sessions: WorkoutSession[];
   feedback: ExerciseFeedback[];
+  routines?: Routine[];
+  activeWorkout?: WorkoutSession | null;
 }

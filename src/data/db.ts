@@ -4,8 +4,10 @@ import type {
   Plan,
   WorkoutSession,
   ExerciseFeedback,
+  Routine,
 } from './types';
 import { DEFAULT_EQUIPMENT } from './equipment';
+import type { ExerciseDbEntry } from './exerciseDb';
 
 export interface ActiveWorkoutRecord {
   id: string;
@@ -19,6 +21,8 @@ export class AtlasFitDatabase extends Dexie {
   sessions!: EntityTable<WorkoutSession, 'id'>;
   feedback!: EntityTable<ExerciseFeedback, 'exerciseId'>;
   activeWorkout!: EntityTable<ActiveWorkoutRecord, 'id'>;
+  routines!: EntityTable<Routine, 'id'>;
+  externalExercises!: EntityTable<ExerciseDbEntry, 'exerciseId'>;
 
   constructor() {
     super('AtlasFitDatabase');
@@ -29,6 +33,9 @@ export class AtlasFitDatabase extends Dexie {
       feedback: 'exerciseId, updatedAt',
       activeWorkout: 'id, updatedAt',
     });
+    // Additive migration: existing profiles, plans and session history stay intact.
+    this.version(2).stores({ routines: 'id, updatedAt, location' });
+    this.version(3).stores({ externalExercises: 'exerciseId, name, savedAt' });
   }
 }
 
@@ -133,10 +140,16 @@ export async function getActiveWorkout(): Promise<WorkoutSession | null> {
 }
 
 export async function saveActiveWorkout(session: WorkoutSession): Promise<void> {
-  await db.activeWorkout.put({
-    id: ACTIVE_WORKOUT_KEY,
-    session,
-    updatedAt: Date.now(),
+  await db.transaction('rw', db.activeWorkout, db.sessions, async () => {
+    await db.activeWorkout.put({ id: ACTIVE_WORKOUT_KEY, session, updatedAt: Date.now() });
+    await db.sessions.put(session);
+  });
+}
+
+export async function finishSession(session: WorkoutSession): Promise<void> {
+  await db.transaction('rw', db.activeWorkout, db.sessions, async () => {
+    await db.sessions.put({ ...session, state: 'done' });
+    await db.activeWorkout.clear();
   });
 }
 

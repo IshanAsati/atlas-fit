@@ -9,14 +9,14 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png'],
+      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png', 'fonts/source-sans-3-latin-variable.woff2'],
       manifest: {
         name: 'Atlas Fit',
         short_name: 'Atlas',
         description:
           'Offline-first personal strength training: adaptable plans, set logging, and a cartoon muscle map.',
-        theme_color: '#090A0F',
-        background_color: '#090A0F',
+        theme_color: '#101916',
+        background_color: '#101916',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -41,8 +41,8 @@ export default defineConfig({
             urlPattern: ({ request }) => request.destination === 'image',
             handler: 'CacheFirst',
             options: {
-              cacheName: 'atlas-exercise-images',
-              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 90 },
+              cacheName: 'atlas-workout-media-v1',
+              expiration: { maxEntries: 1200, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
         ],

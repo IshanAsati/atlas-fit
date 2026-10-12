@@ -95,6 +95,7 @@ describe('ExerciseLibraryScreen', () => {
 
   it('filters exercises by movement pattern', async () => {
     render(<ExerciseLibraryScreen />);
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }));
 
     const squatChip = screen.getByRole('radio', { name: /Squat/i });
     fireEvent.click(squatChip);
@@ -114,6 +115,7 @@ describe('ExerciseLibraryScreen', () => {
 
   it('filters exercises by muscle group and difficulty', async () => {
     render(<ExerciseLibraryScreen />);
+    fireEvent.click(screen.getByRole('button', { name: 'Filters' }));
 
     // Muscle group
     const chestChip = screen.getByRole('radio', { name: /Chest/i });
@@ -132,7 +134,7 @@ describe('ExerciseLibraryScreen', () => {
   it('filters by favourites only and toggles card favorite button', async () => {
     render(<ExerciseLibraryScreen />);
 
-    const favToggle = screen.getByRole('button', { name: /★ Favourites Only/i });
+    const favToggle = screen.getByRole('button', { name: 'Favourites' });
     fireEvent.click(favToggle);
 
     await waitFor(() => {
@@ -207,7 +209,7 @@ describe('ExerciseDetailSheet', () => {
     expect(startPoseBtn.getAttribute('aria-selected')).toBe('false');
   });
 
-  it('embeds front and back mini Bodygraph with crimson primary and cyan secondary highlights', () => {
+  it('embeds front and back mini Bodygraph with independent primary and secondary semantic colors', () => {
     render(
       <ExerciseDetailSheet
         exercise={pushUpEx}
@@ -228,15 +230,15 @@ describe('ExerciseDetailSheet', () => {
 
     // Chest is primary -> #FF4757
     const chestGroup = frontSvg.querySelector('#chest');
-    expect(chestGroup?.getAttribute('fill')).toBe('#FF4757');
+    expect(chestGroup?.getAttribute('fill')).toBe('var(--muscle-primary, #E86672)');
 
     // Front delts is secondary -> #00D2FF
     const frontDeltsGroup = frontSvg.querySelector('#front_delts');
-    expect(frontDeltsGroup?.getAttribute('fill')).toBe('#00D2FF');
+    expect(frontDeltsGroup?.getAttribute('fill')).toBe('var(--muscle-secondary, #A88BDA)');
 
     // Triceps is secondary on back -> #00D2FF
     const tricepsGroup = backSvg.querySelector('#triceps');
-    expect(tricepsGroup?.getAttribute('fill')).toBe('#00D2FF');
+    expect(tricepsGroup?.getAttribute('fill')).toBe('var(--muscle-secondary, #A88BDA)');
   });
 
   it('renders instructions, coach cues (green), common mistakes (warn) and equipment badges', () => {
@@ -311,7 +313,7 @@ describe('ExerciseDetailSheet', () => {
       />,
     );
 
-    const closeBtn = screen.getByLabelText(/Close details/i);
+    const closeBtn = screen.getByLabelText('Close push-up');
     fireEvent.click(closeBtn);
     expect(handleClose).toHaveBeenCalled();
 

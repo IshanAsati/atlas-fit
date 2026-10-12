@@ -21,16 +21,17 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT_DIR = join(ROOT, 'public', 'icons')
+const PROVENANCE = 'Original Atlas Fit icon rendered programmatically by scripts/gen-icons.mjs from the hand-authored public/icons/icon.svg geometry; matte forest #101916, surface #1B2923, lime #B9E27C. Not AI-generated or externally sourced.'
 
 // ---------------------------------------------------------------------------
 // Palette — mirrors src/design/tokens.css
 // ---------------------------------------------------------------------------
-const BG = [0x13, 0x10, 0x19] // --bg         #131019
-const SURFACE = [0x27, 0x22, 0x2f] // --surface    #27222f
-const SURFACE_TOP = [0x24, 0x1d, 0x33] // .hero gradient start
-const HAIRLINE = [0x3d, 0x35, 0x49] // --hairline   #3d3549
-const BLUE = [0x57, 0xb9, 0xfa] // --action     #57b9fa
-const LILAC = [0xba, 0x83, 0xf7] // --accent     #ba83f7
+const BG = [0x10, 0x19, 0x16]
+const SURFACE = [0x1b, 0x29, 0x23]
+const SURFACE_TOP = SURFACE
+const HAIRLINE = [0x35, 0x47, 0x3c]
+const BLUE = [0xb9, 0xe2, 0x7c]
+const LILAC = BLUE
 
 // ---------------------------------------------------------------------------
 // Geometry — identical to public/icons/icon.svg (viewBox 0 0 512 512)
@@ -186,6 +187,7 @@ function encodePNG(width, height, rgba) {
   return Buffer.concat([
     signature,
     pngChunk('IHDR', ihdr),
+    pngChunk('tEXt', Buffer.from(`impeccable:prompt\0${PROVENANCE}`, 'utf8')),
     pngChunk('IDAT', deflateSync(raw, { level: 9 })),
     pngChunk('IEND', Buffer.alloc(0)),
   ])
