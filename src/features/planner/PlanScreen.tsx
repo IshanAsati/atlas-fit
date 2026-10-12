@@ -167,6 +167,19 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ onStartSession, onSelect
     setView('routines'); setSwapTarget(null); setAddExerciseId(''); setStatus('');
   }
 
+  function createCustomWorkout() {
+    if (!profile) return;
+    const now = Date.now();
+    openEditor({
+      id: `routine-${crypto.randomUUID()}`,
+      title: 'Custom workout',
+      createdAt: now,
+      updatedAt: now,
+      location: profile.activeLocation,
+      exercises: [],
+    }, false);
+  }
+
   const saveEditedRoutine = () => perform(async () => {
     if (!editor) return;
     if (!editor.title.trim() || !editor.exercises.length) throw new Error('Give your routine a name and at least one exercise.');
@@ -255,9 +268,9 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ onStartSession, onSelect
       <details className="panel plan-explanation"><summary>Why this plan?</summary><ul>{plan.explanation.map((reason, index) => <li key={index}>{reason}</li>)}</ul></details>
     </>}
 
-    {view === 'routines' && <section className="plan-routines" aria-labelledby="routines-heading"><h2 id="routines-heading" className="h-sec">Saved routines</h2><p className="sub">Keep workouts you want to repeat. Edits only change the routine, not past sessions.</p>
+    {view === 'routines' && <section className="plan-routines" aria-labelledby="routines-heading"><div className="plan-section-heading"><div><h2 id="routines-heading" className="h-sec">Saved routines</h2><p className="sub">Keep workouts you want to repeat. Edits only change the routine, not past sessions.</p></div><button type="button" className="btn primary" disabled={busy} onClick={createCustomWorkout}>Create custom workout</button></div>
       {routinesError && <div className="plan-error"><p role="alert">{routinesError}</p><button type="button" className="btn" disabled={busy} onClick={() => void perform(async () => { setRoutines(await getRoutines()); setRoutinesError(''); })}>Retry loading routines</button></div>}
-      {editor && <section className="panel plan-routine-editor" aria-labelledby="routine-editor-heading"><h3 id="routine-editor-heading" ref={editorHeading} tabIndex={-1}>{editorBaseline ? 'Edit routine' : 'Save workout as a routine'}</h3><p className="small">{editorDirty ? 'Unsaved changes' : 'Saved on this device'}</p><div className="plan-settings-grid"><label>Routine name<input value={editor.title} maxLength={120} disabled={busy} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>Routine location<select value={editor.location} disabled={busy} onChange={(event) => { setEditor({ ...editor, location: event.target.value as LocationType }); setAddExerciseId(''); setSwapTarget(null); }}>{LOCATIONS.map((location) => <option key={location} value={location}>{locationLabel(location)}</option>)}</select></label></div>
+       {editor && <section className="panel plan-routine-editor" aria-labelledby="routine-editor-heading"><h3 id="routine-editor-heading" ref={editorHeading} tabIndex={-1}>{editorBaseline ? 'Edit routine' : 'Create custom workout'}</h3><p className="small">{!editor.exercises.length ? 'Start with an empty workout, then add exercises below.' : editorDirty ? 'Unsaved changes' : 'Saved on this device'}</p><div className="plan-settings-grid"><label>Routine name<input value={editor.title} maxLength={120} disabled={busy} onChange={(event) => setEditor({ ...editor, title: event.target.value })} /></label><label>Routine location<select value={editor.location} disabled={busy} onChange={(event) => { setEditor({ ...editor, location: event.target.value as LocationType }); setAddExerciseId(''); setSwapTarget(null); }}>{LOCATIONS.map((location) => <option key={location} value={location}>{locationLabel(location)}</option>)}</select></label></div>
         <ol className="plan-exercises">{editor.exercises.map((exercise, index) => <li className="plan-routine-exercise" key={`${exercise.exerciseId}-${index}`}><ExerciseSummary exercise={exercise} onSelectExercise={onSelectExercise} />
           {CATALOG_BY_ID[exercise.exerciseId] && !isExerciseEligible(CATALOG_BY_ID[exercise.exerciseId], profile, editor.location, feedback) && <p className="plan-error small">This exercise does not match your equipment, experience, or restrictions. Swap or remove it before training.</p>}
           <div className="plan-prescription-inputs"><label>Sets<input aria-label={`Sets for ${exerciseName(exercise.exerciseId)}`} type="number" min="1" max="30" value={exercise.sets} disabled={busy} onChange={(event) => editExercise(index, { sets: Number(event.target.value) })} /></label><label>Reps<input aria-label={`Reps for ${exerciseName(exercise.exerciseId)}`} value={exercise.reps} disabled={busy} onChange={(event) => editExercise(index, { reps: event.target.value })} /></label><label>Rest (seconds)<input aria-label={`Rest seconds for ${exerciseName(exercise.exerciseId)}`} type="number" min="0" max="1800" value={exercise.restSec} disabled={busy} onChange={(event) => editExercise(index, { restSec: Number(event.target.value) })} /></label></div>

@@ -6,7 +6,7 @@ import * as db from '../../data/db';
 import * as training from '../../data/training';
 import * as media from '../../data/media';
 import * as engine from './engine';
-import type { Plan, Routine, UserProfile, WorkoutSession } from '../../data/types';
+import type { Plan, PerformedSet, Routine, UserProfile, WorkoutSession } from '../../data/types';
 
 vi.mock('../../data/db', () => ({
   db: { profiles: {}, plans: {}, transaction: vi.fn(async (...args: unknown[]) => (args[args.length - 1] as () => Promise<void>)()) },
@@ -187,6 +187,29 @@ describe('PlanScreen schedule and reusable routines', () => {
     const saved = vi.mocked(training.saveRoutine).mock.calls[0][0];
     expect(saved.title).toBe('My new routine'); expect(saved.exercises).toEqual(plan.days[0].exercises);
     expect(saved.id).not.toBe(plan.id); expect(db.savePlan).not.toHaveBeenCalled();
+  });
+
+  it('creates a custom workout from scratch, adds an eligible exercise, and starts it empty', async () => {
+    const onStart = await mount();
+    savedRoutines();
+    fireEvent.click(screen.getByRole('button', { name: 'Create custom workout' }));
+    expect(screen.getByRole('heading', { name: 'Create custom workout' })).toBeDefined();
+    expect(screen.getByText('Start with an empty workout, then add exercises below.')).toBeDefined();
+    fireEvent.change(screen.getByLabelText('Routine name'), { target: { value: 'Travel strength' } });
+    fireEvent.change(screen.getByLabelText('Add an exercise'), { target: { value: 'push-up' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));
+    expect(screen.getByText('Push-up')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Save routine' }));
+    await screen.findByText('Routine saved on this device.');
+    const saved = vi.mocked(training.saveRoutine).mock.calls[0][0];
+    expect(saved.title).toBe('Travel strength');
+    expect(saved.location).toBe('home');
+    expect(saved.exercises).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Start Travel strength' }));
+    await waitFor(() => expect(onStart).toHaveBeenCalledTimes(1));
+    const session = onStart.mock.calls[0][0];
+    expect(session.title).toBe('Travel strength');
+    expect(session.items[0].sets.every((set: PerformedSet) => set.reps === null && set.loadKg === null && !set.done)).toBe(true);
   });
 
   it('renames, reorders, edits, and removes exercises while preserving unedited metadata', async () => {
