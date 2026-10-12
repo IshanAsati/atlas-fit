@@ -5,7 +5,7 @@
 .today-workout { display: flex; flex-direction: column; gap: 10px; background: var(--surface); padding: 20px; border-radius: 28px; border: 0; box-shadow: 0 12px 30px rgb(42 35 64 / .07); }
 .today-workout > p { margin: 0; }
 .today-workout .h-sec { font-size: 20px; font-weight: 650; color: var(--text); }
-.today-title { margin: 3px 0 0; font-size: 30px; line-height: 1.12; letter-spacing: -.03em; }
+.today-title { margin: 3px 0 0; font-size: 30px; line-height: 1.12; letter-spacing: -.02em; }
 .today-preview { display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; margin: 4px 0 6px; }
 .preview-exercise { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; padding: 0; min-height: 48px; text-align: left; color: var(--text); min-width: 0; }
 .preview-exercise .exercise-picture { width: 48px; height: 48px; }

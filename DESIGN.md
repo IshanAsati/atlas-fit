@@ -55,33 +55,33 @@ dark-colors:
   nav-bg: "#17141c"
 typography:
   display:
-    fontFamily: "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Baloo 2', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     fontSize: "30px"
     fontWeight: 700
     lineHeight: 1.15
-    letterSpacing: "-.03em"
+    letterSpacing: "-.02em"
   headline:
-    fontFamily: "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Baloo 2', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     fontSize: "27px"
     fontWeight: 700
     lineHeight: 1.15
-    letterSpacing: "-.025em"
+    letterSpacing: "-.02em"
   title:
-    fontFamily: "'Source Sans 3', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Baloo 2', 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
     fontSize: "18px"
-    fontWeight: 650
+    fontWeight: 700
     lineHeight: 1.3
-    letterSpacing: "-.015em"
+    letterSpacing: "-.01em"
   body:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
     fontSize: "16px"
     lineHeight: 1.5
   supporting:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
     fontSize: "14px"
     lineHeight: 1.5
   button:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
+    fontFamily: "'Nunito', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif"
     fontSize: "15px"
     fontWeight: 650
 rounded:
@@ -186,7 +186,7 @@ Neutral anatomy uses `muscle-neutral`. The three activity greens encode low, med
 
 ## Typography
 
-Source Sans 3 supplies headings; the native platform stack supplies body text, numbers, labels, and controls. The variable font is served from `public/fonts/source-sans-3-latin-variable.woff2`, with its SIL OFL licence alongside it; there are no runtime hosted-font calls.
+Baloo 2 supplies headings and Nunito supplies body text, numbers, labels, and controls. Both are variable Latin WOFF2 files served from `public/fonts/`, with their SIL OFL licences alongside them; there are no runtime hosted-font calls. Source Sans 3 remains bundled as a fallback.
 
 The frontmatter captures shared display, page headline, section title, body, supporting, and button roles. Today uses a closely related workout title (30px); focused logging uses a compact session title (1.25rem) and exercise title (1.4rem). These are contextual variants, not an oversized marketing hierarchy. Workout and Progress numbers use tabular numerals. Editable fields and workout selectors use 16px text to avoid iPhone focus zoom.
 

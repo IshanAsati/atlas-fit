@@ -31,9 +31,12 @@ Documentation and usage restrictions: https://oss.exercisedb.dev/docs
 
 ## Open-source libraries
 
-Heading typography: Source Sans 3 by Adobe, self-hosted Latin variable WOFF2 from
-Fontsource `@fontsource-variable/source-sans-3@5.2.8`. SIL Open Font License 1.1:
-`public/fonts/LICENSE-SourceSans3.txt`. Font is precached for offline use; no hosted
+Body typography: Nunito by Vernon Adams, self-hosted Latin variable WOFF2 from
+Google Fonts. SIL Open Font License 1.1: `public/fonts/LICENSE-Nunito.txt`.
+Heading typography: Baloo 2 by Ek Type, self-hosted Latin variable WOFF2 from
+Google Fonts. SIL Open Font License 1.1: `public/fonts/LICENSE-Baloo2.txt`.
+Source Sans 3 by Adobe remains bundled as a fallback. SIL Open Font License 1.1:
+`public/fonts/LICENSE-SourceSans3.txt`. Fonts are precached for offline use; no hosted
 font requests are made by the app.
 
 Dexie.js · dexie-react-hooks · Vite + vite-plugin-pwa (Workbox) · React + React Router ·
