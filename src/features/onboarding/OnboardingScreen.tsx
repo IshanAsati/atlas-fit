@@ -286,6 +286,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
       pinned: initialProfile?.pinned || [],
       favourites: initialProfile?.favourites || [],
       weightUnit: initialProfile?.weightUnit ?? 'kg',
+      trainingBlock: initialProfile?.trainingBlock,
+      reminders: initialProfile?.reminders,
+      nutrition: initialProfile?.nutrition,
       onboarded: false,
     };
   }, [

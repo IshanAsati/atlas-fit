@@ -9,6 +9,9 @@ import { OFFLINE_MEDIA_CACHE } from '../../data/media';
 import { Modal } from '../../design/Modal';
 import { Icon } from '../../design/Icon';
 import type { ThemePreference } from '../../design/theme';
+import { PlateCalculator } from '../workout/PlateCalculator.tsx';
+import { WorkoutReminders } from './WorkoutReminders';
+import { isWorkoutReminderSettings } from '../../data/trainingSettings';
 
 export interface DataScreenProps {
   onProfileUpdated?: (profile: UserProfile) => void;
@@ -56,21 +59,29 @@ export function DataScreen({ onProfileUpdated, onDataRestored, themePreference, 
     {profile && <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       <section><h2 className="h-sec" style={{ marginBottom: 16 }}>Training preferences</h2>
         <div className="field"><label htmlFor="settings-name">Display name</label><input id="settings-name" className="input" value={profile.displayName} maxLength={32} onChange={(event) => setProfile({ ...profile, displayName: event.target.value })} /></div>
-        <div className="row" style={{ marginTop: 14 }}>
+        <div className="row settings-basic-row" style={{ marginTop: 20 }}>
           <div className="field grow"><label htmlFor="settings-goal">Goal</label><select id="settings-goal" className="input" value={profile.goal} onChange={(event) => setProfile({ ...profile, goal: event.target.value as UserProfile['goal'] })}><option value="strength">Strength</option><option value="fitness">General fitness</option><option value="technique">Technique</option><option value="endurance">Endurance</option><option value="mobility">Mobility</option></select></div>
           <div className="field grow"><label htmlFor="settings-experience">Experience</label><select id="settings-experience" className="input" value={profile.experience} onChange={(event) => setProfile({ ...profile, experience: event.target.value as UserProfile['experience'] })}><option value="new">New</option><option value="some">Some experience</option><option value="experienced">Experienced</option></select></div>
         </div>
         <div className="field" style={{ marginTop: 14 }}><label htmlFor="settings-unit">Weight unit</label><select id="settings-unit" className="input" value={profile.weightUnit ?? 'kg'} onChange={(event) => setProfile({ ...profile, weightUnit: event.target.value as 'kg' | 'lb' })}><option value="kg">Kilograms (kg)</option><option value="lb">Pounds (lb)</option></select><p className="small">Switch anytime. Your recorded weights stay the same.</p></div>
       </section>
-      <section><h2 className="h-sec">Your equipment</h2><p className="sub" style={{ marginBottom: 14 }}>Choose a location, then select what’s available there.</p>
+      <details className="settings-disclosure"><summary>Your equipment<span className="small">{profile.equipment[inventoryLocation].length} selected at {inventoryLocation} · expand to edit</span></summary><section><p className="sub" style={{ marginBottom: 16 }}>Choose a location, then select what’s available there.</p>
         <EquipmentInventory location={inventoryLocation} onLocationChange={setInventoryLocation} equipment={profile.equipment} onToggle={(place, id, checked) => setProfile({ ...profile, equipment: { ...profile.equipment, [place]: checked ? [...profile.equipment[place], id] : profile.equipment[place].filter((item) => item !== id) } })} onResetLocation={(place) => setProfile({ ...profile, equipment: { ...profile.equipment, [place]: [...DEFAULT_EQUIPMENT[place]] } })} />
-      </section>
-      <section><h2 className="h-sec">Training boundaries</h2><div className="field" style={{ marginTop: 12 }}><label htmlFor="settings-discomfort">Discomfort or professional advice</label><textarea id="settings-discomfort" className="input" value={profile.discomfortNotes} onChange={(event) => setProfile({ ...profile, discomfortNotes: event.target.value })} /></div><p className="small">Notes are for your reference—not a diagnosis. Avoid individual movements from their exercise details. Stop if you feel pain.</p>
-        <div style={{ marginTop: 16 }}><TrainingPreferences value={{ targetMuscles: profile.targetMuscles ?? [], avoidEquipment: profile.avoidEquipment ?? [], restrictions: profile.restrictions }} onChange={(next) => setProfile({ ...profile, targetMuscles: next.targetMuscles, avoidEquipment: next.avoidEquipment, restrictions: next.restrictions })} /></div></section>
+      </section></details>
+      <details className="settings-disclosure"><summary>Training boundaries<span className="small">{profile.restrictions.length} restrictions · {profile.avoidEquipment?.length ?? 0} equipment exclusions · {profile.targetMuscles?.length ?? 0} muscle priorities</span></summary><section><div className="field"><label htmlFor="settings-discomfort">Discomfort or professional advice</label><textarea id="settings-discomfort" className="input" value={profile.discomfortNotes} onChange={(event) => setProfile({ ...profile, discomfortNotes: event.target.value })} /></div><p className="small">Notes are for your reference—not a diagnosis. Avoid individual movements from their exercise details. Stop if you feel pain.</p>
+        <div style={{ marginTop: 20 }}><TrainingPreferences value={{ targetMuscles: profile.targetMuscles ?? [], avoidEquipment: profile.avoidEquipment ?? [], restrictions: profile.restrictions }} onChange={(next) => setProfile({ ...profile, targetMuscles: next.targetMuscles, avoidEquipment: next.avoidEquipment, restrictions: next.restrictions })} /></div></section></details>
       <button className="btn primary block" type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save preferences'}</button>
     </form>}
+    {profile && <WorkoutReminders value={profile.reminders} weekdays={profile.weekdays} onSave={async (reminders) => {
+      if (!isWorkoutReminderSettings(reminders)) throw new Error('Choose a valid reminder time.');
+      const updated = { ...await getUserProfile(), reminders };
+      await saveUserProfile(updated);
+      setProfile((current) => current ? { ...current, reminders } : updated);
+      onProfileUpdated?.(updated);
+    }} />}
+    <section><h2 className="h-sec">Training tools</h2><PlateCalculator unit={profile?.weightUnit ?? 'kg'} /></section>
     <section><h2 className="h-sec">Appearance</h2><div className="field" style={{ marginTop: 12 }}><label htmlFor="settings-theme">Theme</label><select id="settings-theme" className="input" value={themePreference} onChange={(event) => onThemePreferenceChange(event.target.value as ThemePreference)}><option value="system">Use device setting</option><option value="dark">Dark</option><option value="light">Light</option></select><p className="small">Applies to this device only. It does not change your workout data.</p></div></section>
-    <section style={{ borderTop: '1px solid var(--hairline)', paddingTop: 24 }}><h2 className="h-sec">Backup and restore</h2><p className="sub">Download a copy of your settings, plans, routines, and workout history, including any unfinished workout. Keep it somewhere safe before switching devices or clearing browser data.</p>
+    <section style={{ borderTop: '1px solid var(--hairline)', paddingTop: 24 }}><h2 className="h-sec">Backup and restore</h2><p className="sub">Save your settings, diet preferences, cardio, routines, and workout history, including unfinished workouts. Health Connect data stays with your health app and is not included. Keep a copy before switching devices or clearing data.</p>
       <div className="row wrap" style={{ marginTop: 14 }}><button className="btn ghost grow" disabled={busy} onClick={async () => { try { await downloadBackupFile(); setStatus('Backup downloaded. Keep it outside this browser.'); } catch { setError('Backup export failed. Try again.'); } }}><Icon name="download" />Export backup</button><label className="btn ghost grow" style={{ cursor: 'pointer' }}>Choose backup<input type="file" accept=".json,application/json" aria-label="Choose backup file" onChange={(event) => { setRestoreFile(event.target.files?.[0] ?? null); event.target.value = ''; }} style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)' }} /></label></div>
     </section>
     <section><h2 className="h-sec">Offline images</h2><p className="sub">{mediaCount === null ? 'Couldn’t check your saved images.' : `${mediaCount} ${mediaCount === 1 ? 'image' : 'images'} saved on this device.`} Save workout images from Today or Plan. Your browser may remove them to free space, so check before travelling.</p><button className="btn ghost small-btn" style={{ marginTop: 12 }} disabled={!mediaCount} onClick={() => setClearMedia(true)}>Remove downloaded images</button><p className="small">Removing images never deletes your workout records.</p></section>

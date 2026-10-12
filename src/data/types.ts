@@ -84,6 +84,36 @@ export interface UserProfile {
   /** Equipment the user would rather not touch, even when it is available
    *  (e.g. barbells, Smith machine). A hard constraint, including for pins. */
   avoidEquipment?: string[];
+  trainingBlock?: TrainingBlockSettings;
+  reminders?: WorkoutReminderSettings;
+  nutrition?: NutritionPreferences;
+}
+
+export interface NutritionPreferences {
+  diet: 'vegetarian' | 'eggetarian' | 'non-vegetarian';
+  age: number;
+  equationSex: 'female' | 'male';
+  weightKg: number;
+  heightCm: number;
+  activity: 'sedentary' | 'light' | 'moderate' | 'high';
+  goal: 'maintain' | 'lose' | 'gain';
+  foodExclusions: string[];
+  /** Stable offline meal-plan seed; changing it is an explicit regenerate action. */
+  planSeed?: string;
+}
+
+export interface TrainingBlockSettings {
+  enabled: boolean;
+  lengthWeeks: 4 | 6 | 8;
+  /** Local calendar date, YYYY-MM-DD. */
+  startDate: string;
+  deloadLastWeek: boolean;
+}
+
+export interface WorkoutReminderSettings {
+  enabled: boolean;
+  /** Local clock time, HH:mm, using the profile's preferred weekdays. */
+  time: string;
 }
 
 export interface PlannedExercise {
@@ -143,6 +173,13 @@ export interface WorkoutSession {
   items: SessionItem[];
   pausedAt?: number;
   pausedMs?: number;
+  /** Immutable block phase at session start; never re-applied on resume. */
+  blockContext?: {
+    week: number;
+    lengthWeeks: 4 | 6 | 8;
+    phase: 'build' | 'deload';
+    loadFactor: number;
+  };
 }
 
 export interface Routine {
@@ -161,6 +198,17 @@ export interface ExerciseFeedback {
   updatedAt: number;
 }
 
+/** Cardio is logged separately and never counted as strength working sets. */
+export interface CardioSession {
+  id: string;
+  activity: 'walk' | 'run' | 'cycle' | 'row' | 'swim' | 'other';
+  durationMin: number;
+  distanceKm?: number;
+  intensity: 'easy' | 'moderate' | 'hard';
+  completedAt: number;
+  notes?: string;
+}
+
 export interface BackupDoc {
   schema: 1;
   exportedAt: number;
@@ -170,4 +218,5 @@ export interface BackupDoc {
   feedback: ExerciseFeedback[];
   routines?: Routine[];
   activeWorkout?: WorkoutSession | null;
+  cardio?: CardioSession[];
 }

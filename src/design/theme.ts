@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { syncNativeSystemBars } from '../native/systemBars';
 
 export type ThemePreference = 'system' | 'dark' | 'light';
 export type ResolvedTheme = 'dark' | 'light';
@@ -40,6 +41,7 @@ export function applyTheme(preference: ThemePreference): void {
   const root = document.documentElement;
   if (!root) return;
   root.dataset.theme = resolveTheme(preference);
+  syncNativeSystemBars(root.dataset.theme as ResolvedTheme);
 }
 
 /** Persists the preference (best effort) and applies it immediately. */

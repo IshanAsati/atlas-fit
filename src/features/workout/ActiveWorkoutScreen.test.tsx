@@ -70,6 +70,35 @@ describe('ActiveWorkoutScreen', () => {
     expect(screen.getByLabelText('Push-up set 2 reps')).toBeDefined();
   });
 
+  it('applies a historical suggestion only to empty unmarked working rows', async () => {
+    const planned = { exerciseId: 'db-row', sets: 2, reps: '8–12', restSec: 90, reason: '' };
+    vi.mocked(db.getWorkoutSessions).mockResolvedValue([{ ...mockSession, id: 'history', state: 'done', startedAt: 1,
+      items: [{ exerciseId: 'db-row', planned, sets: [{ loadKg: 20, reps: 10, done: true, effort: 2 }, { loadKg: 20, reps: 10, done: true, effort: 2 }] }] }]);
+    await open({ ...mockSession, items: [{ exerciseId: 'db-row', planned,
+      sets: [{ loadKg: 5, reps: 8, done: false }, { loadKg: null, reps: null, done: false }] }] });
+    const name = catalog.CATALOG_BY_ID['db-row'].name;
+    fireEvent.click(screen.getByText('Suggested targets & warm-ups'));
+    fireEvent.click(screen.getByRole('button', { name: 'Use suggested target' }));
+    expect((screen.getByLabelText(`${name} set 1 load kg`) as HTMLInputElement).value).toBe('5');
+    expect((screen.getByLabelText(`${name} set 2 load kg`) as HTMLInputElement).value).toBe('20');
+    expect((screen.getByLabelText(`${name} set 2 reps`) as HTMLInputElement).value).toBe('11');
+    expect(screen.getByRole('button', { name: `Complete ${name} set 2` }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('adds unmarked warmups before existing working sets without duplicating them', async () => {
+    await open({ ...mockSession, items: [{ exerciseId: 'db-row', planned: { exerciseId: 'db-row', sets: 2, reps: '8–12', restSec: 90, reason: '' },
+      sets: [{ loadKg: 20, reps: 8, done: false }, { loadKg: null, reps: null, done: false }] }] });
+    fireEvent.click(screen.getByText('Suggested targets & warm-ups'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add warm-up sets' }));
+    await waitFor(() => {
+      const saved = vi.mocked(db.saveActiveWorkout).mock.calls.at(-1)?.[0];
+      expect(saved?.items[0].sets).toHaveLength(5);
+      expect(saved?.items[0].sets.slice(0, 3).every((set) => set.kind === 'warmup' && !set.done)).toBe(true);
+      expect(saved?.items[0].sets[3]).toMatchObject({ loadKg: 20, reps: 8, done: false });
+    });
+    expect((screen.getByRole('button', { name: 'Add warm-up sets' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it('uses readable movement names while preserving the filter ids', async () => {
     await open();
     fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }));

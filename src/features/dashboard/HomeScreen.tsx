@@ -7,11 +7,13 @@ import { downloadExerciseMedia } from '../../data/media';
 import { BodygraphFigure } from '../bodygraph/BodygraphFigure';
 import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
+import { getTrainingBlockPhase } from '../planner/trainingBlocks';
+import { HealthSummary } from './HealthSummary';
 import './HomeScreen.css';
 
 export interface HomeScreenProps {
   onStartWorkout?: (session: WorkoutSession) => void;
-  onNavigateTab?: (tab: 'home' | 'plan' | 'workout' | 'exercises' | 'bodygraph' | 'data') => void;
+  onNavigateTab?: (tab: 'home' | 'plan' | 'workout' | 'exercises' | 'bodygraph' | 'data' | 'cardio' | 'nutrition') => void;
   onNavigate?: (tab: string) => void;
   onSelectExercise?: (exerciseId: string) => void;
   className?: string;
@@ -85,6 +87,9 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
         <div className="row between"><span className="small">{location ? locationLabels[location] : 'Your training'}</span>{(active || !nextDay) && <span className="small">{active ? 'Workout in progress' : plan ? 'Week complete' : 'Your first workout'}</span>}</div>
         <h2 className="today-title">{active?.title ?? nextDay?.label ?? (plan ? 'Your week is complete' : 'Ready for your first workout?')}</h2>
         <p className="sub">{active ? 'Pick up where you left off. Your sets are saved.' : nextDay?.focus ?? (plan ? 'Take a rest day, or open your plan to repeat a workout.' : 'Open your plan to choose a workout for your time and equipment.')}</p>
+        {profile?.trainingBlock?.enabled && <p className="small">{active?.blockContext
+          ? `Week ${active.blockContext.week} of ${active.blockContext.lengthWeeks} · ${active.blockContext.phase === 'deload' ? 'Deload' : 'Build'}`
+          : getTrainingBlockPhase(profile.trainingBlock).title}. Manage your block in Plan.</p>}
         {previewItems.length > 0 && <>
           <p className="small">{previewItems.length} {previewItems.length === 1 ? 'exercise' : 'exercises'}{!active && ` · About ${profile?.durationMin ?? 45} min`}</p>
           <div className="today-preview">{previewItems.slice(0,3).map((id,index) => {
@@ -96,6 +101,12 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
         {previewItems.length > 0 && <button className="btn ghost block small-btn" disabled={downloading} onClick={() => void download()}><Icon name="download" size={17} />{downloading ? 'Saving images…' : 'Save offline images'}</button>}
         {mediaStatus && <p className="small" role="status">{mediaStatus}</p>}
         {previewItems.length > 0 && <button className="today-adjust" onClick={() => go('plan')}>Adjust workout <Icon name="arrow" size={16} /></button>}
+      </section>
+      <HealthSummary />
+      <section className="today-destinations" aria-label="Cardio and nutrition">
+        <h2 className="h-sec">Beyond strength</h2>
+        <button type="button" className="destination-row" onClick={() => go('cardio')}><span><strong>Cardio</strong><span>Log walks, runs, rides, and more</span></span><Icon name="arrow" /></button>
+        <button type="button" className="destination-row" onClick={() => go('nutrition')}><span><strong>Diet & Nutrition</strong><span>Indian meal plans and nutrition calculators</span></span><Icon name="arrow" /></button>
       </section>
       <section aria-label="Weekly activity strip"><div className="section-heading"><h2 className="h-sec">This week</h2><span className="small">{thisWeek.length} of {profile?.daysPerWeek ?? 3} workouts</span></div>
         <div className="strip" role="list">{strip.map((day) => <div key={day.label} role="listitem" className={`cell ${day.hit ? 'hit' : ''} ${day.today ? 'today' : ''}`} aria-label={`${day.label} ${day.day}, ${day.hit ? 'workout completed' : 'no workout'}`}><span>{day.label}</span><strong>{day.day}</strong>{day.hit && <Icon name="check" size={14} />}</div>)}</div>

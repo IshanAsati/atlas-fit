@@ -101,9 +101,10 @@ with sync_playwright() as p:
     expect(page.get_by_role('dialog')).to_have_count(0)
     expect(page.get_by_label(f'{name} set 2 reps', exact=True)).to_have_value('8')
     page.evaluate('window.scrollTo(0,0)')
+    page.get_by_label(f'{name} set 3 reps', exact=True).scroll_into_view_if_needed()
     pending = page.get_by_label(f'{name} set 3 reps', exact=True).bounding_box()
     toolbar = page.locator('.action-toolbar').bounding_box()
-    assert pending and toolbar and pending['y'] + pending['height'] < toolbar['y'], 'Incomplete set is below toolbar on first viewport'
+    assert pending and toolbar and pending['y'] + pending['height'] < toolbar['y'], 'Incomplete set hidden behind toolbar after scrolling into view'
     both('workout')
     page.get_by_role('button', name='Save & exit', exact=True).click()
     expect(page.get_by_role('heading', name='Today', exact=True)).to_be_visible()

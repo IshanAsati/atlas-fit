@@ -1,0 +1,15 @@
+.training-block-settings { display: grid; gap: 16px; min-width: 0; color: var(--text); }
+.training-block-settings h3 { margin: 0 0 6px; font-size: 18px; }
+.training-block-settings p { margin: 0; overflow-wrap: anywhere; }
+.training-block-settings .small { font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.training-block-settings .field { min-width: 0; }
+.training-block-settings .input { font-size: 16px; min-height: 44px; min-width: 0; caret-color: var(--text); }
+.training-block-settings .training-block-toggle { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.training-block-settings .training-block-toggle input { width: 20px; height: 20px; min-height: 20px; flex-shrink: 0; margin: 0; padding: 0; accent-color: var(--focus); }
+.training-block-phase { display: grid; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.training-block-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.training-block-actions .btn { min-height: 44px; white-space: normal; }
+.training-block-settings .training-block-error { color: var(--danger); }
+.training-block-settings :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.training-block-settings ::selection { background: var(--action); color: var(--action-ink); }
+.training-block-settings [role='status']:empty { display: none; }

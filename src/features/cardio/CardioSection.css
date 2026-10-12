@@ -1,0 +1,30 @@
+.cardio-section { min-width: 0; display: flex; flex-direction: column; gap: 12px; margin-block: 10px 4px; color: var(--text); }
+.cardio-section p { overflow-wrap: anywhere; }
+.cardio-summary { margin: 0; font-size: 14px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.cardio-log { border-block: 1px solid var(--hairline); }
+.cardio-log summary { min-height: 48px; padding: 12px 4px; cursor: pointer; color: var(--action-text); font-size: 16px; font-weight: 650; }
+.cardio-log summary:hover { background: var(--surface-hover); }
+.cardio-form { padding-block: 4px 16px; }
+.cardio-form fieldset { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; min-width: 0; border: 0; }
+.cardio-form .input { min-width: 0; max-width: 100%; font-size: 16px; border-color: var(--hairline-strong); }
+.cardio-form label { font-size: 14px; }
+.cardio-form input[type='date'] { appearance: none; min-height: 48px; }
+.cardio-distance { display: grid; grid-template-columns: minmax(0, 1fr) minmax(100px, .5fr); gap: 12px; }
+.cardio-section .btn { min-height: 44px; }
+.cardio-section .btn:not(:disabled):hover { background: var(--surface-hover); }
+.cardio-section .btn.primary:not(:disabled):hover { background: var(--action-deep); }
+.cardio-section .btn.danger:not(:disabled):hover { background: var(--surface-2); }
+.cardio-error, .cardio-status { margin: 0; font-size: 14px; }
+.cardio-error { color: var(--danger); }
+.cardio-status { color: var(--good); }
+.cardio-list-heading { font-size: 16px; margin: 6px 0 0; font-weight: 650; }
+.cardio-records { list-style: none; margin: 0; padding: 0; max-height: 420px; overflow-y: auto; scrollbar-color: var(--hairline-strong) var(--bg); }
+.cardio-records li { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-block: 12px; border-bottom: 1px solid var(--hairline); }
+.cardio-record-content { flex: 1 1 180px; min-width: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.cardio-record-content strong { font-size: 16px; }
+.cardio-record-content p, .cardio-confirm p { margin: 4px 0 0; font-size: 14px; color: var(--text-2); }
+.cardio-record-content p { white-space: pre-wrap; }
+.cardio-confirm { flex: 1 1 100%; }
+.cardio-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.cardio-section--compact .cardio-records { max-height: 300px; }
+@media (max-width: 359px) { .cardio-distance { grid-template-columns: minmax(0, 1fr); } }

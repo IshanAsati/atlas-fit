@@ -7,6 +7,9 @@ import { downloadExerciseMedia } from '../../data/media';
 import { EQUIPMENT_BY_ID } from '../../data/equipment';
 import { generatePlan, swapExerciseInPlan } from './engine';
 import { isExerciseEligible } from './validator';
+import { TrainingBlockControls } from './TrainingBlockSettings';
+import { getTrainingBlockPhase } from './trainingBlocks';
+import { isTrainingBlockSettings } from '../../data/trainingSettings';
 import './PlanScreen.css';
 
 interface PlanScreenProps {
@@ -248,6 +251,16 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ onStartSession, onSelect
         })}</ol>
         {nextDay && <div className="plan-next"><div><h3>{completedDayIds.size >= plan.days.length ? 'This week is complete' : 'Up next'}</h3><p>{nextDay.label} · {nextDay.exercises.length} exercises</p></div><button type="button" className="btn primary" disabled={busy || !nextDay.exercises.length} onClick={() => void perform(() => startSession(() => daySession(nextDay, plan.location)))}>{activeWorkout ? 'Resume workout' : 'Start next workout'}</button></div>}
       </section>
+
+      <details className="panel plan-adjust"><summary>Training block{profile.trainingBlock?.enabled ? ` · ${getTrainingBlockPhase(profile.trainingBlock).title}` : ''}</summary><TrainingBlockControls value={profile.trainingBlock} disabled={busy} onSave={async (trainingBlock) => {
+        if (!isTrainingBlockSettings(trainingBlock)) throw new Error('Choose a valid training block and start date.');
+        const latest = await getUserProfile();
+        const updated = { ...latest, trainingBlock };
+        await saveUserProfile(updated);
+        setProfile(updated);
+        setDraft((current) => current ? { ...current, trainingBlock } : current);
+        setStatus('Training block saved. Applies to new workouts; history and unfinished workouts are unchanged.');
+      }} /></details>
 
       <details className="panel plan-adjust"><summary>Adjust plan</summary><div className="plan-adjust-body">
         <p className="small">Short on time or training somewhere else? Preview your changes, then use them for one workout or save a new weekly plan.</p>

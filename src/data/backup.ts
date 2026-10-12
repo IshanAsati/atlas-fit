@@ -1,5 +1,7 @@
 import { db } from './db';
 import { MUSCLE_BY_ID } from './muscles';
+import { shareNativeBackup } from '../native/backupShare';
+import { isNutritionPreferences, isTrainingBlockSettings, isWorkoutReminderSettings } from './trainingSettings';
 import type {
   BackupDoc,
   UserProfile,
@@ -7,6 +9,7 @@ import type {
   WorkoutSession,
   ExerciseFeedback,
   Routine,
+  CardioSession,
 } from './types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
@@ -23,6 +26,9 @@ function validPlannedExercise(value: unknown): boolean {
 function validSession(value: unknown): boolean {
   return isRecord(value) && text(value.id) && typeof value.title === 'string' && location(value.location) && finite(value.startedAt) &&
     ['active', 'done'].includes(String(value.state)) && optionalTimestamp(value.endedAt) && optionalTimestamp(value.pausedAt) && optionalTimestamp(value.pausedMs) &&
+    (value.blockContext === undefined || (isRecord(value.blockContext) && finite(value.blockContext.week) && Number.isInteger(value.blockContext.week) &&
+      finite(value.blockContext.lengthWeeks) && [4,6,8].includes(value.blockContext.lengthWeeks) && value.blockContext.week >= 1 && value.blockContext.week <= value.blockContext.lengthWeeks &&
+      ['build','deload'].includes(String(value.blockContext.phase)) && finite(value.blockContext.loadFactor) && value.blockContext.loadFactor > 0 && value.blockContext.loadFactor <= 1)) &&
     (value.planId === undefined || typeof value.planId === 'string') && (value.dayId === undefined || typeof value.dayId === 'string') &&
     Array.isArray(value.items) && value.items.every((item) => isRecord(item) && text(item.exerciseId) && optionalBoolean(item.skipped) && optionalBoolean(item.discomfort) &&
       (item.planned === undefined || validPlannedExercise(item.planned)) && Array.isArray(item.sets) && item.sets.every((set) => isRecord(set) && typeof set.done === 'boolean' &&
@@ -30,16 +36,25 @@ function validSession(value: unknown): boolean {
         (set.kind === undefined || set.kind === 'warmup' || set.kind === 'working') && (set.effort === undefined || (finite(set.effort) && [1, 2, 3].includes(set.effort)))));
 }
 
+function validCardioSession(value: unknown): boolean {
+  return isRecord(value) && text(value.id) && ['walk','run','cycle','row','swim','other'].includes(String(value.activity)) &&
+    finite(value.durationMin) && value.durationMin > 0 && value.durationMin <= 1440 &&
+    (value.distanceKm === undefined || (finite(value.distanceKm) && value.distanceKm > 0 && value.distanceKm <= 10000)) &&
+    ['easy','moderate','hard'].includes(String(value.intensity)) && finite(value.completedAt) && value.completedAt >= 0 && value.completedAt <= 8.64e15 &&
+    (value.notes === undefined || (typeof value.notes === 'string' && value.notes.length <= 500));
+}
+
 export async function exportBackup(): Promise<string> {
-  return db.transaction('r', [db.profiles, db.plans, db.sessions, db.feedback, db.routines, db.activeWorkout], async () => {
+  return db.transaction('r', [db.profiles, db.plans, db.sessions, db.feedback, db.routines, db.activeWorkout, db.cardio], async () => {
     const profile = (await db.profiles.toCollection().first()) ?? null;
     const plans = await db.plans.toArray();
     const sessions = await db.sessions.toArray();
     const feedback = await db.feedback.toArray();
     const routines = await db.routines.toArray();
     const activeWorkout = (await db.activeWorkout.get('active'))?.session ?? null;
+    const cardio = await db.cardio.toArray();
 
-    const backupDoc: BackupDoc = { schema: 1, exportedAt: Date.now(), profile, plans, sessions, feedback, routines, activeWorkout };
+    const backupDoc: BackupDoc = { schema: 1, exportedAt: Date.now(), profile, plans, sessions, feedback, routines, activeWorkout, cardio };
 
     return JSON.stringify(backupDoc, null, 2);
   });
@@ -92,6 +107,9 @@ export async function importBackup(
       !stringList(prof.weekdays) || !prof.weekdays.every((day) => ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].includes(day)) ||
       !['restrictions','liked','disliked','pinned','favourites','avoidEquipment','targetMuscles'].every((key) => prof[key] === undefined || stringList(prof[key])) ||
       (Array.isArray(prof.targetMuscles) && !prof.targetMuscles.every((id) => Object.hasOwn(MUSCLE_BY_ID, String(id)))) ||
+      (prof.trainingBlock !== undefined && !isTrainingBlockSettings(prof.trainingBlock)) ||
+      (prof.reminders !== undefined && !isWorkoutReminderSettings(prof.reminders)) ||
+      (prof.nutrition !== undefined && !isNutritionPreferences(prof.nutrition)) ||
       typeof prof.discomfortNotes !== 'string' || typeof prof.otherSports !== 'string' || typeof prof.onboarded !== 'boolean' ||
       (prof.weightUnit !== undefined && prof.weightUnit !== 'kg' && prof.weightUnit !== 'lb')) {
       return { success: false, error: 'Invalid profile preferences or equipment' };
@@ -163,13 +181,17 @@ export async function importBackup(
       !Array.isArray(routine.exercises) || !routine.exercises.length || !routine.exercises.every(validPlannedExercise);
   }))) return { success: false, error: 'Invalid saved routines in backup' };
   const validatedRoutines = (raw.routines ?? []) as Routine[];
+  if (raw.cardio !== undefined && (!Array.isArray(raw.cardio) || !raw.cardio.every(validCardioSession))) {
+    return { success: false, error: 'Invalid cardio sessions in backup' };
+  }
+  const validatedCardio = (raw.cardio ?? []) as CardioSession[];
   const restoredActive = raw.activeWorkout as WorkoutSession | null | undefined;
   if (restoredActive !== undefined && restoredActive !== null && (!validSession(restoredActive) || restoredActive.state !== 'active')) {
     return { success: false, error: 'Invalid active workout in backup' };
   }
 
   try {
-    await db.transaction('rw', [db.profiles, db.plans, db.sessions, db.feedback, db.activeWorkout, db.routines], async () => {
+    await db.transaction('rw', [db.profiles, db.plans, db.sessions, db.feedback, db.activeWorkout, db.routines, db.cardio], async () => {
       await db.profiles.clear();
       if (validatedProfile) {
         await db.profiles.put(validatedProfile);
@@ -197,6 +219,8 @@ export async function importBackup(
       }
       await db.routines.clear();
       if (validatedRoutines.length) await db.routines.bulkAdd(validatedRoutines);
+      await db.cardio.clear();
+      if (validatedCardio.length) await db.cardio.bulkAdd(validatedCardio);
     });
 
     return { success: true };
@@ -213,6 +237,8 @@ export async function downloadBackupFile(): Promise<void> {
   const month = String(now.getMonth() + 1).padStart(2, '0');
   const day = String(now.getDate()).padStart(2, '0');
   const filename = `atlas-fit-backup-${year}-${month}-${day}.json`;
+
+  if (await shareNativeBackup(filename, jsonString)) return;
 
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return;

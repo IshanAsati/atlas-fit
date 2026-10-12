@@ -13,14 +13,19 @@ import { OnboardingScreen } from './features/onboarding/OnboardingScreen';
 import { Icon, type IconName } from './design/Icon';
 import { useThemePreference } from './design/theme';
 import { registerSW } from 'virtual:pwa-register';
+import { Capacitor } from '@capacitor/core';
+import { prepareNewWorkout } from './data/prepareWorkout';
+import { scheduleWorkoutReminders } from './native/notifications';
+import { CardioSection } from './features/cardio/CardioSection';
+import { NutritionScreen } from './features/nutrition/NutritionScreen';
 
-export type AppTab = 'home' | 'plan' | 'workout' | 'exercises' | 'muscles' | 'data';
+export type AppTab = 'home' | 'plan' | 'workout' | 'exercises' | 'muscles' | 'data' | 'cardio' | 'nutrition';
 function readRoute(): { tab: AppTab; exerciseId: string | null } {
   const [path, query] = location.hash.slice(1).split('?');
-  const routes: Record<string,AppTab> = { today: 'home', plan: 'plan', workout: 'workout', library: 'exercises', progress: 'muscles', settings: 'data' };
+  const routes: Record<string,AppTab> = { today: 'home', plan: 'plan', workout: 'workout', library: 'exercises', progress: 'muscles', settings: 'data', cardio: 'cardio', diet: 'nutrition' };
   return { tab: routes[path?.replace(/^\//,'')] ?? 'home', exerciseId: new URLSearchParams(query).get('exercise') };
 }
-const routeNames: Record<AppTab,string> = { home: 'today', plan: 'plan', workout: 'workout', exercises: 'library', muscles: 'progress', data: 'settings' };
+const routeNames: Record<AppTab,string> = { home: 'today', plan: 'plan', workout: 'workout', exercises: 'library', muscles: 'progress', data: 'settings', cardio: 'cardio', nutrition: 'diet' };
 const tabs: { tab: AppTab; label: string; icon: IconName }[] = [
   { tab: 'home', label: 'Today', icon: 'home' }, { tab: 'plan', label: 'Plan', icon: 'plan' },
   { tab: 'exercises', label: 'Library', icon: 'library' }, { tab: 'muscles', label: 'Progress', icon: 'progress' },
@@ -40,6 +45,8 @@ export function App() {
   const starting = useRef(false);
   const scrollPositions = useRef<Partial<Record<AppTab,number>>>({});
   const activeTab = route.tab;
+  const reminderSettings = profile?.reminders;
+  const reminderWeekdays = profile?.weekdays;
   const selectedExercise = route.exerciseId ? CATALOG_BY_ID[route.exerciseId] ?? null : null;
   const refreshData = useCallback(async () => {
     try {
@@ -51,6 +58,11 @@ export function App() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void refreshData(); }, [refreshData]);
+  useEffect(() => {
+    if (!reminderWeekdays || !Capacitor.isNativePlatform()) return;
+    // Restore/update existing local schedules without prompting on app launch.
+    void scheduleWorkoutReminders(reminderSettings ?? { enabled: false, time: '18:00' }, reminderWeekdays, false);
+  }, [reminderSettings, reminderWeekdays]);
   useEffect(() => {
     const update = () => setRoute(readRoute());
     window.addEventListener('hashchange', update);
@@ -65,6 +77,8 @@ export function App() {
     return () => window.clearTimeout(timer);
   }, [toast]);
   useEffect(() => {
+    // Native app assets update with the APK, not a browser service worker.
+    if (Capacitor.isNativePlatform()) return;
     updateServiceWorker.current = registerSW({ onNeedRefresh: () => setUpdateReady(true) });
   }, []);
 
@@ -82,8 +96,9 @@ export function App() {
     starting.current = true;
     try {
       const existing = await getActiveWorkout();
-      const session = existing?.state === 'active' ? existing : requested;
-      if (!existing) await saveActiveWorkout(session);
+      const hasActive = existing?.state === 'active';
+      const session = hasActive ? existing : prepareNewWorkout(requested, await getUserProfile());
+      if (!hasActive) await saveActiveWorkout(session);
       setActiveSession(session);
       navigate('workout');
       if (existing && existing.id !== requested.id) setToast('Resuming your unfinished workout. Finish it before starting another.');
@@ -111,10 +126,12 @@ export function App() {
       {activeTab === 'exercises' && <ExerciseLibraryScreen onSelectExercise={selectExercise} />}
       {activeTab === 'muscles' && <ProgressScreen onSelectExercise={selectExercise} onRepeatSession={repeatSession} onNavigateTab={navigate} />}
       {activeTab === 'data' && <><header className="topbar row between"><h1>Settings</h1><button className="icon-btn" aria-label="Back to Today" onClick={() => navigate('home')}><Icon name="back" /></button></header><DataScreen onProfileUpdated={setProfile} onDataRestored={() => void refreshData()} themePreference={themePreference} onThemePreferenceChange={setThemePreference} /></>}
+      {activeTab === 'cardio' && <><header className="topbar row between"><h1>Cardio</h1><button className="icon-btn" aria-label="Back to Today" onClick={() => navigate('home')}><Icon name="back" /></button></header><main className="view"><CardioSection /></main></>}
+      {activeTab === 'nutrition' && <><header className="topbar row between"><h1>Diet & Nutrition</h1><button className="icon-btn" aria-label="Back to Today" onClick={() => navigate('home')}><Icon name="back" /></button></header><NutritionScreen onProfileUpdated={setProfile} /></>}
     </div>
     {activeTab !== 'workout' && <>
       {activeSession && <button className="resume-strip" onClick={() => navigate('workout')}><Icon name="play" /><span className="grow"><strong>Resume workout</strong><small>{activeSession.title}</small></span><Icon name="arrow" /></button>}
-      <nav className="tabbar" aria-label="Main navigation">{tabs.map((tab) => <button type="button" className="tab" key={tab.tab} aria-current={activeTab === tab.tab ? 'page' : undefined} onClick={() => navigate(tab.tab)}><Icon name={tab.icon} /><span>{tab.label}</span></button>)}</nav>
+      <nav className="tabbar" aria-label="Main navigation">{tabs.map((tab) => <button type="button" className="tab" key={tab.tab} aria-current={activeTab === tab.tab || (tab.tab === 'home' && ['cardio','nutrition','data'].includes(activeTab)) ? 'page' : undefined} onClick={() => navigate(tab.tab)}><Icon name={tab.icon} /><span>{tab.label}</span></button>)}</nav>
     </>}
     <ExerciseDetailSheet exercise={selectedExercise} isOpen={Boolean(selectedExercise)} onClose={closeExercise} onSelectExercise={selectExercise} userProfile={profile} onProfileUpdated={setProfile} allowAddToActiveWorkout={activeTab !== 'workout'} />
   </div>;

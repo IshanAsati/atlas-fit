@@ -5,6 +5,7 @@ import type {
   WorkoutSession,
   ExerciseFeedback,
   Routine,
+  CardioSession,
 } from './types';
 import { DEFAULT_EQUIPMENT } from './equipment';
 import type { ExerciseDbEntry } from './exerciseDb';
@@ -23,6 +24,7 @@ export class AtlasFitDatabase extends Dexie {
   activeWorkout!: EntityTable<ActiveWorkoutRecord, 'id'>;
   routines!: EntityTable<Routine, 'id'>;
   externalExercises!: EntityTable<ExerciseDbEntry, 'exerciseId'>;
+  cardio!: EntityTable<CardioSession, 'id'>;
 
   constructor() {
     super('AtlasFitDatabase');
@@ -36,6 +38,7 @@ export class AtlasFitDatabase extends Dexie {
     // Additive migration: existing profiles, plans and session history stay intact.
     this.version(2).stores({ routines: 'id, updatedAt, location' });
     this.version(3).stores({ externalExercises: 'exerciseId, name, savedAt' });
+    this.version(4).stores({ cardio: 'id, completedAt, activity' });
   }
 }
 
@@ -80,6 +83,9 @@ function cloneProfile(profile: UserProfile): UserProfile {
     favourites: [...(profile.favourites ?? [])],
     targetMuscles: [...(profile.targetMuscles ?? [])],
     avoidEquipment: [...(profile.avoidEquipment ?? [])],
+    trainingBlock: profile.trainingBlock ? { ...profile.trainingBlock } : undefined,
+    reminders: profile.reminders ? { ...profile.reminders } : undefined,
+    nutrition: profile.nutrition ? { ...profile.nutrition, foodExclusions: [...profile.nutrition.foodExclusions] } : undefined,
   };
 }
 

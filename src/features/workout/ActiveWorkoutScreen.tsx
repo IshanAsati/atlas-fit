@@ -14,6 +14,8 @@ import './ActiveWorkout.css';
 import { Modal } from '../../design/Modal';
 import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
+import { WorkoutTrainingTools, applySuggestedTarget, prependWarmups } from './WorkoutTrainingTools';
+import { PlateCalculator } from './PlateCalculator.tsx';
 
 
 export interface ActiveWorkoutScreenProps {
@@ -346,6 +348,9 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
       </div>
     </header>
     {!finishOpen && errorBanner}
+    {activeSession.blockContext && <p className="workout-safety-note" style={{ fontSize: 14 }}>
+      Week {activeSession.blockContext.week} of {activeSession.blockContext.lengthWeeks} · {activeSession.blockContext.phase === 'deload' ? 'Deload: fewer working sets and lighter suggested loads.' : 'Build: progress only when your logged performance supports it.'}
+    </p>}
     {activeSession.pausedAt && <div className="workout-paused" role="status">Workout timer paused. Tap Resume when you’re ready.</div>}
     {!activeSession.items.length && <div className="workout-empty"><h2>Add your first exercise</h2><p>Choose an exercise below to begin logging.</p></div>}
     {activeSession.items.length > 0 && !overview && <nav className="workout-exercise-nav" aria-label="Exercise navigation"><button type="button" disabled={focusedIndex === 0} onClick={() => { setFocusedIndex((index) => index - 1); setError(''); }}>Previous</button><span>Exercise {focusedIndex + 1} of {activeSession.items.length}</span><button type="button" disabled={focusedIndex >= activeSession.items.length - 1} onClick={() => { setFocusedIndex((index) => index + 1); setError(''); }}>Next</button></nav>}
@@ -410,11 +415,17 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
               </div>;
             })}
           </div>}
+          {exercise && !item.skipped && <details className="workout-training-details"><summary>Suggested targets & warm-ups</summary><WorkoutTrainingTools exercise={exercise} item={item} history={pastSessions} unit={unit}
+            loadFactor={activeSession.blockContext?.loadFactor ?? 1} disabled={busy}
+            onUseSuggestion={(suggestion) => updateItem(itemIndex, (current) => applySuggestedTarget(current, suggestion))}
+            onAddWarmups={(sets) => updateItem(itemIndex, (current) => prependWarmups(current, sets))} /></details>}
           <div className="exercise-controls-bar"><button type="button" disabled={busy || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: [...current.sets, { loadKg: null, reps: null, done: false, kind: 'working' }] }))}>Add set</button><button type="button" disabled={busy || item.sets.length <= 1 || item.skipped} onClick={() => updateItem(itemIndex, (current) => ({ ...current, sets: current.sets.slice(0, -1) }))}>Remove last set</button>
             <button type="button" disabled={busy} onClick={() => { setSwapIndex(itemIndex); setSwapReason(item.discomfort ? 'Discomfort' : 'Machine busy'); setBlockedEquipment(exercise?.equipmentIds.filter((id) => id !== 'bodyweight' && id !== 'mat') ?? []); }}>Swap exercise</button>
             <button type="button" disabled={busy} onClick={() => updateItem(itemIndex, (current) => ({ ...current, skipped: !current.skipped }))}>{item.skipped ? 'Unskip exercise' : 'Skip exercise'}</button>
           </div>
           <label className="workout-discomfort"><input type="checkbox" disabled={busy} checked={item.discomfort ?? false} onChange={(event) => updateItem(itemIndex, (current) => ({ ...current, discomfort: event.target.checked }))} />Discomfort with this exercise</label>
+          {!item.skipped && exercise?.equipmentIds.some((id) => ['barbell', 'trap-bar', 'ez-bar', 'smith-machine', 'landmine'].includes(id)) &&
+            <PlateCalculator key={`${item.exerciseId}-${itemIndex}`} unit={unit} initialLoadKg={item.sets.find((set) => set.kind !== 'warmup' && set.loadKg !== null)?.loadKg} />}
           {item.discomfort && <p className="workout-safety-note">Stop if this movement hurts. Skip or choose another exercise; a substitute is not a guarantee of comfort.</p>}
         </article>;
       })}

@@ -1,24 +1,32 @@
 .dashboard-screen { gap: 0; }
-.today-header { display: grid; grid-template-columns: minmax(0,1fr) 44px; align-items: center; gap: 12px; padding-inline: 20px; }
+.today-header { display: grid; grid-template-columns: minmax(0,1fr) 48px; align-items: center; gap: 12px; padding-inline: 20px; }
 .today-header h1 { font-size: 24px; line-height: 1.25; letter-spacing: -.02em; }
 .today-header p { font-size: 14px; line-height: 1.5; margin-top: 3px; }
-.today-workout { display: flex; flex-direction: column; gap: 11px; background: var(--surface); padding: 20px 16px 15px; border-radius: 28px; border: 0; box-shadow: 0 12px 30px rgb(42 35 64 / .07); }
+.today-workout { display: flex; flex-direction: column; gap: 10px; background: var(--surface); padding: 20px; border-radius: 28px; border: 0; box-shadow: 0 12px 30px rgb(42 35 64 / .07); }
 .today-workout > p { margin: 0; }
-.today-workout .h-sec { font-size: 14px; font-weight: 500; color: var(--text-2); }
+.today-workout .h-sec { font-size: 20px; font-weight: 650; color: var(--text); }
 .today-title { margin: 3px 0 0; font-size: 30px; line-height: 1.12; letter-spacing: -.03em; }
-.today-preview { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin: 5px 0 7px; }
-.preview-exercise { border: 0; background: transparent; padding: 0; text-align: left; color: var(--text-2); min-width: 0; }
-.preview-exercise .exercise-picture { width: 100%; height: auto; aspect-ratio: 1; }
-.preview-exercise > span { display: block; font-size: 14px; margin-top: 6px; line-height: 1.4; overflow-wrap: anywhere; }
-.today-adjust { color: var(--action-text); font-size: 14px; display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px 0; min-height: 44px; background: none; border: 0; }
+.today-preview { display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; margin: 4px 0 6px; }
+.preview-exercise { display: flex; align-items: center; gap: 12px; border: 0; background: transparent; padding: 0; min-height: 48px; text-align: left; color: var(--text); min-width: 0; }
+.preview-exercise .exercise-picture { width: 48px; height: 48px; }
+.preview-exercise > span { display: block; min-width: 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
+.today-adjust { color: var(--action-text); font-size: 16px; display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px 0; min-height: 48px; background: none; border: 0; }
 .strip .cell { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 7px 0; border-radius: 13px; }
 .strip .cell strong { font-size: 16px; }
 .strip .cell.today { border-color: var(--focus); }
-.today-link { border: 0; padding: 8px 0 8px 10px; min-height: 44px; color: var(--action-text); background: transparent; display: flex; align-items: center; gap: 7px; font-size: 14px; }
-.recent-session { width: 100%; background: var(--surface); color: var(--text); border: 0; border-radius: 20px; padding: 16px; display: flex; justify-content: space-between; align-items: center; gap: 16px; text-align: left; box-shadow: 0 8px 24px rgb(31 25 45 / .045); }
+.today-link { border: 0; padding: 8px 0; min-height: 48px; color: var(--action-text); background: transparent; display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.recent-session { width: 100%; background: var(--surface); color: var(--text); border: 0; border-radius: 20px; padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 16px; text-align: left; box-shadow: 0 8px 24px rgb(31 25 45 / .045); }
+.recent-session > div { min-width: 0; overflow-wrap: anywhere; }
 .recent-session p { margin: 6px 0 0; }
-.first-session-note { padding: 18px 16px; border: 0; border-radius: 20px; background: var(--surface); }
-.first-session-note strong { font-size: 15px; }
+.first-session-note { padding: 20px; border: 0; border-radius: 20px; background: var(--surface); }
+.first-session-note strong { font-size: 16px; }
 .today-activity { display: flex; align-items: center; gap: 20px; }
 .today-activity > .bodyfig { width: 100px; max-height: 170px; }
 .today-activity .small { margin-block: 8px 12px; }
+.today-activity > div { min-width: 0; }
+@media (max-width: 360px) {
+  .today-title { font-size: 27px; }
+  .today-workout { padding: 18px 16px; }
+  .today-activity { gap: 16px; }
+  .today-activity > .bodyfig { width: 80px; }
+}
