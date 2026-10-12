@@ -1,0 +1,11 @@
+@import './design/tokens.css';
+
+@media (min-width: 520px) {
+  body {
+    background: #0a0810;
+  }
+  .shell {
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.75);
+    border-inline: 1px solid var(--hairline);
+  }
+}

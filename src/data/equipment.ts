@@ -26,9 +26,6 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'barbell', label: 'Barbell + plates', category: 'Gym · Free weights' },
   { id: 'squat-rack', label: 'Squat rack', category: 'Gym · Free weights' },
   { id: 'ez-bar', label: 'EZ / curl bar', category: 'Gym · Free weights' },
-  { id: 'smith-machine', label: 'Smith machine', category: 'Gym · Free weights' },
-  { id: 'hack-squat', label: 'Hack squat machine', category: 'Gym · Lower' },
-  { id: 'stability-ball', label: 'Stability ball', category: 'Home' },
   { id: 'preacher', label: 'Preacher bench', category: 'Gym · Free weights' },
   // Gym cables
   { id: 'cable', label: 'Cable station', category: 'Gym · Cables' },

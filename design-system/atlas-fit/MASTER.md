@@ -1,5 +1,7 @@
 # Design System Master File
 
+> **Atlas Fit override:** The product specification takes precedence over the generic database suggestions below. Use the app's aubergine canvas (#131019), surface (#27222F), blue action (#57B9FA), lilac accent (#BA83F7), and red/purple/neutral muscle semantics. Body copy uses the iOS/system font stack, display headings use Barlow Condensed. Do not introduce orange/green branding or mandatory gamification from the generic recommendations.
+
 > **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
 > If that file exists, its rules **override** this Master file.
 > If not, strictly follow the rules below.

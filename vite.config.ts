@@ -1,6 +1,7 @@
+/// <reference types="vitest" />
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -14,8 +15,8 @@ export default defineConfig({
         short_name: 'Atlas',
         description:
           'Offline-first personal strength training: adaptable plans, set logging, and a cartoon muscle map.',
-        theme_color: '#131019',
-        background_color: '#131019',
+        theme_color: '#090A0F',
+        background_color: '#090A0F',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
@@ -32,6 +33,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         // App shell + catalogue metadata always available offline.
         // Licensed exercise images are cached on demand at runtime (CacheFirst).
         runtimeCaching: [
@@ -43,19 +45,13 @@ export default defineConfig({
               expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 90 },
             },
           },
-          {
-            // Display type (progressive enhancement — system fallback offline).
-            urlPattern: ({ url }) =>
-              url.origin === 'https://fonts.googleapis.com' ||
-              url.origin === 'https://fonts.gstatic.com',
-            handler: 'StaleWhileRevalidate',
-            options: {
-              cacheName: 'atlas-fonts',
-              expiration: { maxEntries: 12, maxAgeSeconds: 60 * 60 * 24 * 365 },
-            },
-          },
         ],
       },
     }),
   ],
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
 })

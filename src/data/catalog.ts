@@ -1,4 +1,6 @@
-import type { Exercise } from './types';
+import { exercises as repdbExercises } from '@repdb/exercises';
+import type { Exercise, LocationType, Movement, MuscleId } from './types';
+import { DEFAULT_EQUIPMENT } from './equipment';
 
 /**
  * Built-in curated catalogue (source: 'atlas').
@@ -6,13 +8,8 @@ import type { Exercise } from './types';
  * These entries are original Atlas Fit content with manually reviewed
  * primary/secondary muscle assignments (§8.2 — teaching approximations, not
  * measured activation). They ship offline and are always available.
- *
- * The full RepDB Free catalogue (609 entries) is loaded separately via
- * `src/data/repdb.ts` with visible attribution, and goes through the same
- * taxonomy normalisation + review layer before it can influence plans.
  */
-
-export const CATALOG: Exercise[] = [
+export const CURATED_EXERCISES: Exercise[] = [
   {
     id: 'push-up',
     name: 'Push-up',
@@ -771,7 +768,7 @@ export const CATALOG: Exercise[] = [
     ],
     cues: ['Flat back like a tabletop', 'Chest supported by nothing — brace hard'],
     mistakes: ['Standing up to cheat', 'Rounding the back'],
-    substitutes: ['db-row', 'seated-cable-row', 'lat-pulldown'],
+    substitutes: ['db-row', 'seated-cable-row', 'tbar-row'],
   },
   {
     id: 'lat-pulldown',
@@ -1060,10 +1057,927 @@ export const CATALOG: Exercise[] = [
   },
 ];
 
-export const EXERCISE_BY_ID: Record<string, Exercise> = Object.fromEntries(
+/* =========================================================================
+   RepDB Normalization & Taxonomy Layer (§8 & §9 of spec)
+   ========================================================================= */
+
+/** Mapping RepDB muscles to canonical MuscleId (§8.1). */
+const MUSCLE_MAP: Record<string, MuscleId> = {
+  // Chest
+  pectoralis_major: 'chest',
+  pectoralis_minor: 'chest',
+  chest: 'chest',
+  serratus_anterior: 'chest',
+
+  // Deltoids
+  anterior_deltoid: 'front_delts',
+  front_delts: 'front_delts',
+  lateral_deltoid: 'side_delts',
+  side_delts: 'side_delts',
+  supraspinatus: 'side_delts',
+  posterior_deltoid: 'rear_delts',
+  rear_delts: 'rear_delts',
+
+  // Arms
+  biceps_brachii: 'biceps',
+  brachialis: 'biceps',
+  biceps: 'biceps',
+  triceps_brachii: 'triceps',
+  triceps: 'triceps',
+
+  // Forearms
+  forearms: 'forearms',
+  brachioradialis: 'forearms',
+  forearm_extensors: 'forearms',
+  forearm_flexors: 'forearms',
+  wrist_flexors: 'forearms',
+  wrist_extensors: 'forearms',
+
+  // Back & Neck
+  trapezius: 'traps',
+  traps: 'traps',
+  neck: 'traps',
+  latissimus_dorsi: 'lats',
+  lats: 'lats',
+  rhomboids: 'upper_back',
+  upper_back: 'upper_back',
+  teres_major: 'upper_back',
+  erector_spinae: 'erectors',
+  lower_back: 'erectors',
+  erectors: 'erectors',
+  quadratus_lumborum: 'erectors',
+
+  // Core
+  rectus_abdominis: 'abs',
+  transverse_abdominis: 'abs',
+  abs: 'abs',
+  obliques: 'obliques',
+
+  // Glutes
+  gluteus_maximus: 'glutes',
+  gluteus_medius: 'glutes',
+  gluteus_minimus: 'glutes',
+  glutes: 'glutes',
+  abductors: 'glutes',
+
+  // Quads & Legs
+  quadriceps: 'quads',
+  rectus_femoris: 'quads',
+  vastus_lateralis: 'quads',
+  vastus_medialis: 'quads',
+  vastus_intermedius: 'quads',
+  quads: 'quads',
+  adductors: 'quads',
+  hip_flexors: 'quads',
+
+  // Hamstrings
+  hamstrings: 'hamstrings',
+  biceps_femoris: 'hamstrings',
+  semitendinosus: 'hamstrings',
+  semimembranosus: 'hamstrings',
+
+  // Calves
+  gastrocnemius: 'calves',
+  soleus: 'calves',
+  calves: 'calves',
+  tibialis_anterior: 'calves',
+};
+
+function normalizeMuscle(m: string): MuscleId | null {
+  const key = m.toLowerCase().trim().replace(/-/g, '_');
+  return MUSCLE_MAP[key] ?? null;
+}
+
+function normalizeMuscles(muscles: string[] | undefined, fallbackBodyPart?: string): MuscleId[] {
+  const result: MuscleId[] = [];
+  if (muscles) {
+    for (const m of muscles) {
+      const canonical = normalizeMuscle(m);
+      if (canonical && !result.includes(canonical)) {
+        result.push(canonical);
+      }
+    }
+  }
+  if (result.length === 0 && fallbackBodyPart) {
+    const bp = fallbackBodyPart.toLowerCase();
+    if (bp === 'chest') result.push('chest');
+    else if (bp === 'shoulders') result.push('front_delts');
+    else if (bp === 'upper_arms') result.push('biceps');
+    else if (bp === 'lower_arms') result.push('forearms');
+    else if (bp === 'back') result.push('upper_back');
+    else if (bp === 'core') result.push('abs');
+    else if (bp === 'upper_legs') result.push('quads');
+    else if (bp === 'lower_legs') result.push('calves');
+    else result.push('abs');
+  }
+  return result;
+}
+
+/** Map RepDB equipment string to canonical Equipment IDs (§6.4). */
+function mapRepdbEquipment(eqRaw: string | undefined, name: string, bodyPart: string): string[] {
+  const eq = (eqRaw ?? '').toLowerCase().trim();
+  const lowerName = name.toLowerCase();
+  const lowerBp = bodyPart.toLowerCase();
+
+  let mapped: string[];
+
+  switch (eq) {
+    case 'barbell':
+      mapped = ['barbell'];
+      if (lowerName.includes('bench press') || lowerName.includes('bench')) {
+        mapped.push('bench');
+      }
+      if (lowerName.includes('back squat') || lowerName.includes('squat rack')) {
+        mapped.push('squat-rack');
+      }
+      break;
+
+    case 'dumbbell':
+      mapped = ['dumbbells'];
+      if (
+        lowerName.includes('bench press') ||
+        (lowerName.includes('bench') && !lowerName.includes('stretch'))
+      ) {
+        mapped.push('bench');
+      }
+      break;
+
+    case 'cable':
+      if (lowerName.includes('pulldown') || lowerName.includes('lat pull')) {
+        mapped = ['lat-pulldown'];
+      } else if (lowerName.includes('seated row')) {
+        mapped = ['seated-row'];
+      } else {
+        mapped = ['cable'];
+      }
+      break;
+
+    case 'kettlebell':
+      mapped = ['kettlebell'];
+      break;
+
+    case 'ez_bar':
+      mapped = ['ez-bar'];
+      if (lowerName.includes('bench press') || lowerName.includes('bench')) {
+        mapped.push('bench');
+      }
+      break;
+
+    case 'resistance_band':
+    case 'loop_band':
+    case 'band':
+      mapped = ['bands'];
+      break;
+
+    case 'pull_up_bar':
+      mapped = ['pullup-bar'];
+      break;
+
+    case 'ab_wheel':
+      mapped = ['ab-wheel'];
+      break;
+
+    case 'suspension_trainer':
+    case 'rings':
+    case 'suspension':
+      mapped = ['suspension'];
+      break;
+
+    case 'flat_bench':
+    case 'bench':
+      mapped = ['bench'];
+      break;
+
+    case 'smith_machine':
+      mapped = ['barbell', 'squat-rack'];
+      break;
+
+    case 'chest_press_machine':
+      mapped = ['chest-press'];
+      break;
+
+    case 'shoulder_press_machine':
+      mapped = ['shoulder-press'];
+      break;
+
+    case 'chest_fly_machine':
+    case 'pec_deck':
+      mapped = ['pec-deck'];
+      break;
+
+    case 'lat_pulldown_machine':
+      mapped = ['lat-pulldown'];
+      break;
+
+    case 'dip_station':
+    case 'dip_machine':
+      mapped = ['dip-station'];
+      break;
+
+    case 'leg_press':
+    case 'hack_squat':
+      mapped = ['leg-press'];
+      break;
+
+    case 'leg_extension':
+      mapped = ['leg-extension'];
+      break;
+
+    case 'leg_curl':
+      mapped = ['leg-curl'];
+      break;
+
+    case 'seated_calf_raise_machine':
+    case 'standing_calf_raise_machine':
+    case 'donkey_calf_raise_machine':
+      mapped = ['calf-raise'];
+      break;
+
+    case 'hip_thrust_machine':
+      mapped = ['hip-thrust'];
+      break;
+
+    case 'hip_adduction_machine':
+    case 'hip_abduction_machine':
+      mapped = ['adductor'];
+      break;
+
+    case 'assisted_pullup_machine':
+      mapped = ['assisted-pullup'];
+      break;
+
+    case 'back_extension_machine':
+    case 'glute_ham_developer':
+      mapped = ['back-extension'];
+      break;
+
+    case 'preacher_curl_machine':
+      mapped = ['preacher'];
+      break;
+
+    case 'treadmill':
+    case 'stair_climber':
+    case 'elliptical':
+      mapped = ['treadmill'];
+      break;
+
+    case 'rower':
+    case 'ski_erg':
+      mapped = ['rower'];
+      break;
+
+    case 'stationary_bike':
+    case 'air_bike':
+      mapped = ['cycle'];
+      break;
+
+    case 'trap_bar':
+    case 'plates':
+    case 'shrug_machine':
+      mapped = ['barbell'];
+      break;
+
+    case 'bicep_curl_machine':
+    case 'tricep_extension_machine':
+      mapped = ['cable'];
+      break;
+
+    case 'plate_loaded_lateral_raise_machine':
+    case 'wrist_roller':
+      mapped = ['dumbbells'];
+      break;
+
+    case 'ab_crunch_machine':
+    case 'stability_ball':
+      mapped = ['mat'];
+      break;
+
+    case 'plyo_box':
+      mapped = ['chair'];
+      break;
+
+    case 'slam_ball':
+      mapped = ['kettlebell'];
+      break;
+
+    case 'climbing_rope':
+      mapped = ['pullup-bar'];
+      break;
+
+    case 'battle_rope':
+    case 'sled':
+    case 'jump_rope':
+    case 'body_weight':
+    case 'bodyweight':
+    case 'none':
+    default:
+      if (lowerName.includes('bench dip') || lowerName.includes('bench leg pull')) {
+        mapped = ['bench'];
+      } else if (
+        lowerName.includes('plank') ||
+        lowerName.includes('mat') ||
+        (lowerBp === 'core' &&
+          !lowerName.includes('pull-up') &&
+          !lowerName.includes('hanging'))
+      ) {
+        mapped = ['mat'];
+      } else {
+        mapped = ['bodyweight'];
+      }
+      break;
+  }
+
+  return mapped;
+}
+
+/** Map RepDB force, mechanic, category and body_part to canonical Movement. */
+function mapRepdbMovement(raw: (typeof repdbExercises)[number]): Movement {
+  const name = raw.name_en.toLowerCase();
+  const id = raw.id.toLowerCase();
+  const cat = (raw.category ?? '').toLowerCase();
+  const bp = (raw.body_part ?? '').toLowerCase();
+  const force = (raw.force_type ?? '').toLowerCase();
+  const mech = (raw.mechanic ?? '').toLowerCase();
+  const prim = raw.primary_muscles ?? [];
+
+  // Mobility / stretching
+  if (cat === 'stretching' || name.includes('stretch') || id.includes('stretch')) {
+    return 'mobility';
+  }
+
+  // Carry / Cardio
+  if (
+    cat === 'cardio' ||
+    name.includes('carry') ||
+    name.includes('walk') ||
+    name.includes('sled') ||
+    id.includes('carry') ||
+    id.includes('farmer')
+  ) {
+    return 'carry';
+  }
+
+  // Core
+  if (
+    bp === 'core' ||
+    prim.includes('rectus_abdominis') ||
+    prim.includes('transverse_abdominis') ||
+    prim.includes('obliques')
+  ) {
+    return 'core';
+  }
+
+  // Accessory: single joint isolation work
+  if (
+    bp === 'lower_arms' ||
+    bp === 'lower_legs' ||
+    (name.includes('curl') && !name.includes('leg curl')) ||
+    name.includes('tricep') ||
+    name.includes('pushdown') ||
+    name.includes('kickback') ||
+    (name.includes('extension') &&
+      !name.includes('back extension') &&
+      !name.includes('hyperextension')) ||
+    name.includes('lateral raise') ||
+    name.includes('front raise') ||
+    name.includes('calf raise') ||
+    name.includes('leg extension') ||
+    name.includes('leg curl') ||
+    name.includes('wrist') ||
+    name.includes('shrug')
+  ) {
+    return 'accessory';
+  }
+
+  // Squat family
+  if (
+    name.includes('squat') ||
+    name.includes('lunge') ||
+    name.includes('step-up') ||
+    name.includes('step up') ||
+    name.includes('leg press') ||
+    name.includes('hack') ||
+    name.includes('split squat') ||
+    (bp === 'upper_legs' &&
+      (prim.includes('quadriceps') || prim.includes('quads')) &&
+      force === 'push')
+  ) {
+    return 'squat';
+  }
+
+  // Hinge family
+  if (
+    name.includes('deadlift') ||
+    name.includes('rdl') ||
+    name.includes('hip thrust') ||
+    name.includes('glute bridge') ||
+    name.includes('bridge') ||
+    name.includes('good morning') ||
+    name.includes('swing') ||
+    name.includes('back extension') ||
+    name.includes('hyperextension') ||
+    name.includes('clean') ||
+    name.includes('snatch') ||
+    (bp === 'upper_legs' &&
+      (prim.includes('gluteus_maximus') || prim.includes('hamstrings')) &&
+      (force === 'pull' || force === 'hinge'))
+  ) {
+    return 'hinge';
+  }
+
+  // Vertical pull
+  if (
+    name.includes('pull-up') ||
+    name.includes('pull up') ||
+    name.includes('chin-up') ||
+    name.includes('chin up') ||
+    name.includes('pulldown') ||
+    name.includes('lat pull')
+  ) {
+    return 'vpull';
+  }
+
+  // Horizontal pull
+  if (
+    name.includes('row') ||
+    name.includes('face pull') ||
+    name.includes('pull-apart') ||
+    name.includes('pull apart') ||
+    name.includes('reverse fly') ||
+    (bp === 'back' && force === 'pull')
+  ) {
+    return 'hpull';
+  }
+
+  // Vertical push
+  if (
+    name.includes('overhead') ||
+    name.includes('shoulder press') ||
+    name.includes('military press') ||
+    name.includes('arnold press') ||
+    name.includes('pike') ||
+    name.includes('handstand') ||
+    name.includes('dip') ||
+    (bp === 'shoulders' && force === 'push')
+  ) {
+    return 'vpush';
+  }
+
+  // Horizontal push
+  if (
+    name.includes('bench') ||
+    name.includes('chest press') ||
+    name.includes('push-up') ||
+    name.includes('push up') ||
+    name.includes('floor press') ||
+    name.includes('fly') ||
+    (bp === 'chest' && force === 'push')
+  ) {
+    return 'hpush';
+  }
+
+  if (mech === 'isolation') {
+    return 'accessory';
+  }
+
+  // Fallbacks by body part
+  if (bp === 'chest') return 'hpush';
+  if (bp === 'shoulders') return 'vpush';
+  if (bp === 'back') return 'hpull';
+  if (bp === 'upper_legs') return 'squat';
+
+  return 'accessory';
+}
+
+/** Map RepDB difficulty strings to 1 | 2 | 3. */
+function mapRepdbDifficulty(d: string | undefined): 1 | 2 | 3 {
+  if (d === 'advanced') return 3;
+  if (d === 'intermediate') return 2;
+  return 1;
+}
+
+/** Extract cues / mistakes from RepDB tips. */
+function extractMistakesFromTips(tips: string[] | undefined, movement: Movement): string[] {
+  const mistakes: string[] = [];
+  if (tips) {
+    for (const tip of tips) {
+      const lower = tip.toLowerCase();
+      if (
+        lower.includes('do not') ||
+        lower.includes('avoid') ||
+        lower.includes('never') ||
+        lower.includes("don't") ||
+        lower.includes('stop before') ||
+        lower.includes('hyperextend')
+      ) {
+        mistakes.push(tip);
+      }
+    }
+  }
+  if (mistakes.length === 0) {
+    switch (movement) {
+      case 'squat':
+        mistakes.push('Knees caving inward under load', 'Heels lifting off the floor');
+        break;
+      case 'hinge':
+        mistakes.push('Rounding the lower back', 'Hyperextending spine at lockout');
+        break;
+      case 'hpush':
+        mistakes.push('Flaring elbows out to 90 degrees', 'Partial range of motion');
+        break;
+      case 'vpush':
+        mistakes.push('Overarching lower back to push overhead', 'Shrugging shoulders into ears');
+        break;
+      case 'hpull':
+        mistakes.push('Yanking with body momentum', 'Rounding shoulders forward');
+        break;
+      case 'vpull':
+        mistakes.push(
+          'Kipping or swinging legs for momentum',
+          'Failing to reach full extension at bottom',
+        );
+        break;
+      case 'core':
+        mistakes.push('Hips sagging or lower back arching', 'Holding breath');
+        break;
+      case 'carry':
+        mistakes.push('Slumping shoulders or poor posture', 'Uneven, unstable steps');
+        break;
+      case 'accessory':
+        mistakes.push('Using body swing instead of strict isolation', 'Half reps');
+        break;
+      case 'mobility':
+        mistakes.push('Forcing into joint pain', 'Bouncing instead of controlled breathing');
+        break;
+    }
+  }
+  return mistakes;
+}
+
+/* =========================================================================
+   Image Resolution Support (§7 of requirements)
+   ========================================================================= */
+
+interface ImageEntry {
+  start?: string;
+  peak?: string;
+  main?: string;
+}
+
+const REPDB_IMAGES_BY_ID = new Map<string, ImageEntry>();
+const REPDB_IMAGES_BY_NAME = new Map<string, ImageEntry>();
+
+function cleanKey(str: string): string {
+  return str.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+// Index all image filenames from RepDB
+for (const raw of repdbExercises) {
+  if (raw.images?.flat) {
+    const flat = raw.images.flat;
+    const entry: ImageEntry = {
+      start: flat.start ? flat.start.split('/').pop() : undefined,
+      peak: flat.peak ? flat.peak.split('/').pop() : undefined,
+      main: flat.main ? flat.main.split('/').pop() : undefined,
+    };
+    REPDB_IMAGES_BY_ID.set(raw.id, entry);
+    REPDB_IMAGES_BY_NAME.set(cleanKey(raw.name_en), entry);
+    if (raw.name_de) REPDB_IMAGES_BY_NAME.set(cleanKey(raw.name_de), entry);
+    if (raw.name_es) REPDB_IMAGES_BY_NAME.set(cleanKey(raw.name_es), entry);
+  }
+}
+
+/**
+ * Returns the local public URL for an exercise image, or null if unavailable.
+ * Poses: 'start' or 'peak'.
+ * Files are located at `/repdb-images/flat/<filename>.webp`.
+ */
+export function getExerciseImageUrl(ex: Exercise, pose: 'start' | 'peak'): string | null {
+  let images = REPDB_IMAGES_BY_ID.get(ex.id);
+  if (!images) {
+    images = REPDB_IMAGES_BY_NAME.get(cleanKey(ex.name));
+  }
+  if (!images && ex.aliases) {
+    for (const a of ex.aliases) {
+      images = REPDB_IMAGES_BY_NAME.get(cleanKey(a));
+      if (images) break;
+    }
+  }
+  if (!images) return null;
+
+  const filename =
+    images[pose] ??
+    (pose === 'start'
+      ? images.main ?? images.peak
+      : images.main ?? images.start);
+
+  return filename ? `/repdb-images/flat/${filename}` : null;
+}
+
+/* =========================================================================
+   Catalog Assembly
+   ========================================================================= */
+
+// Index variation groups to populate sensible initial substitutes
+const VARIATION_GROUPS = new Map<string, string[]>();
+for (const raw of repdbExercises) {
+  if (raw.variation_group) {
+    let list = VARIATION_GROUPS.get(raw.variation_group);
+    if (!list) {
+      list = [];
+      VARIATION_GROUPS.set(raw.variation_group, list);
+    }
+    list.push(raw.id);
+  }
+}
+
+function normalizeRepdbExercise(raw: (typeof repdbExercises)[number]): Exercise {
+  const movement = mapRepdbMovement(raw);
+  const primary = normalizeMuscles(raw.primary_muscles, raw.body_part);
+  const secondary = normalizeMuscles(raw.secondary_muscles).filter(
+    (m) => !primary.includes(m),
+  );
+  const equipmentIds = mapRepdbEquipment(
+    raw.equipment,
+    raw.name_en,
+    raw.body_part ?? '',
+  );
+  const difficulty = mapRepdbDifficulty(raw.difficulty);
+
+  // Aliases from multilingual names and tags
+  const aliases: string[] = [];
+  if (raw.name_de && raw.name_de !== raw.name_en) aliases.push(raw.name_de);
+  if (raw.name_es && raw.name_es !== raw.name_en) aliases.push(raw.name_es);
+  if (raw.tags) {
+    for (const tag of raw.tags) {
+      const cleanTag = tag.replace(/_/g, ' ');
+      if (!aliases.includes(cleanTag)) aliases.push(cleanTag);
+    }
+  }
+
+  const cues = raw.tips_en ? [...raw.tips_en] : [];
+  const mistakes = extractMistakesFromTips(raw.tips_en, movement);
+
+  let substitutes: string[] = [];
+  if (raw.variation_group && VARIATION_GROUPS.has(raw.variation_group)) {
+    substitutes = (VARIATION_GROUPS.get(raw.variation_group) ?? [])
+      .filter((id) => id !== raw.id)
+      .slice(0, 4);
+  }
+
+  return {
+    id: raw.id,
+    name: raw.name_en,
+    aliases,
+    source: 'repdb',
+    equipmentIds,
+    movement,
+    difficulty,
+    primary,
+    secondary,
+    instructions: raw.instructions_en ?? [],
+    cues,
+    mistakes,
+    substitutes,
+  };
+}
+
+/** All 609 RepDB exercises normalized into the canonical Exercise interface. */
+export const NORMALIZED_REPDB: Exercise[] = repdbExercises.map(normalizeRepdbExercise);
+
+const curatedIdSet = new Set(CURATED_EXERCISES.map((e) => e.id));
+
+/**
+ * Fast-indexed combined catalog containing all curated Atlas exercises
+ * and all 609 normalized RepDB exercises.
+ */
+export const CATALOG: Exercise[] = [
+  ...CURATED_EXERCISES,
+  ...NORMALIZED_REPDB.filter((e) => !curatedIdSet.has(e.id)),
+];
+
+// Fallback fill for any exercises without substitutes:
+// Map to other exercises sharing movement and primary muscle
+for (const ex of CATALOG) {
+  if (ex.substitutes.length === 0) {
+    ex.substitutes = CATALOG.filter(
+      (c) =>
+        c.id !== ex.id &&
+        c.movement === ex.movement &&
+        c.primary.some((p) => ex.primary.includes(p)),
+    )
+      .slice(0, 3)
+      .map((c) => c.id);
+  }
+}
+
+export const CATALOG_BY_ID: Record<string, Exercise> = Object.fromEntries(
   CATALOG.map((e) => [e.id, e]),
 );
 
+export const EXERCISE_BY_ID: Record<string, Exercise> = CATALOG_BY_ID;
+
 export function getExercise(id: string): Exercise | undefined {
-  return EXERCISE_BY_ID[id];
+  return CATALOG_BY_ID[id];
+}
+
+/* =========================================================================
+   Search & Substitutes Helpers (§8 of requirements)
+   ========================================================================= */
+
+export interface ExerciseSearchFilters {
+  location?: LocationType;
+  equipment?: string[];
+  muscle?: MuscleId;
+  movement?: Movement;
+  difficulty?: number;
+  favourites?: string[];
+  disliked?: string[];
+}
+
+/**
+ * Searches the catalog with query matching and multidimensional filtering.
+ */
+export function searchExercises(
+  query: string,
+  filters?: ExerciseSearchFilters,
+): Exercise[] {
+  const trimmed = query.trim().toLowerCase();
+
+  let allowedEquipment: Set<string> | null = null;
+  if (filters?.equipment) {
+    allowedEquipment = new Set(filters.equipment);
+  } else if (filters?.location) {
+    allowedEquipment = new Set(DEFAULT_EQUIPMENT[filters.location]);
+  }
+  if (allowedEquipment) {
+    allowedEquipment.add('bodyweight');
+    if (allowedEquipment.has('adj-dumbbells')) allowedEquipment.add('dumbbells');
+    if (allowedEquipment.has('bench')) allowedEquipment.add('chair');
+  }
+
+  const dislikedSet =
+    filters?.disliked && filters.disliked.length > 0
+      ? new Set(filters.disliked)
+      : null;
+
+  const favouritesSet =
+    filters?.favourites !== undefined ? new Set(filters.favourites) : null;
+
+  const results: Array<{ exercise: Exercise; score: number }> = [];
+
+  for (const ex of CATALOG) {
+    // Disliked filter
+    if (dislikedSet && dislikedSet.has(ex.id)) {
+      continue;
+    }
+
+    // Favourites filter
+    if (favouritesSet && !favouritesSet.has(ex.id)) {
+      continue;
+    }
+
+    // Movement filter
+    if (filters?.movement && ex.movement !== filters.movement) {
+      continue;
+    }
+
+    // Muscle filter
+    if (filters?.muscle) {
+      const hasMuscle =
+        ex.primary.includes(filters.muscle) ||
+        ex.secondary.includes(filters.muscle);
+      if (!hasMuscle) continue;
+    }
+
+    // Difficulty filter
+    if (
+      filters?.difficulty !== undefined &&
+      ex.difficulty !== filters.difficulty
+    ) {
+      continue;
+    }
+
+    // Equipment filter
+    if (allowedEquipment && ex.equipmentIds.length > 0) {
+      const canDo = ex.equipmentIds.every((req) => allowedEquipment.has(req));
+      if (!canDo) continue;
+    }
+
+    // Query match & scoring
+    let score = 0;
+    if (trimmed) {
+      const lowerName = ex.name.toLowerCase();
+      const lowerId = ex.id.toLowerCase();
+      const aliasMatch = ex.aliases.some((a) =>
+        a.toLowerCase().includes(trimmed),
+      );
+
+      if (lowerName === trimmed || lowerId === trimmed) {
+        score = 100;
+      } else if (lowerName.startsWith(trimmed)) {
+        score = 75;
+      } else if (lowerName.includes(trimmed)) {
+        score = 50;
+      } else if (lowerId.includes(trimmed)) {
+        score = 40;
+      } else if (aliasMatch) {
+        score = 30;
+      } else {
+        // Query did not match
+        continue;
+      }
+    } else {
+      score = 10;
+    }
+
+    // Prioritize curated Atlas entries slightly
+    if (ex.source === 'atlas') {
+      score += 5;
+    }
+
+    results.push({ exercise: ex, score });
+  }
+
+  results.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.exercise.name.localeCompare(b.exercise.name);
+  });
+
+  return results.map((r) => r.exercise);
+}
+
+/**
+ * Finds alternative exercises matching the target exercise pattern and compatible
+ * with the user's available equipment.
+ */
+export function findSubstitutes(
+  exerciseId: string,
+  availableEquipment: string[],
+): Exercise[] {
+  const target = CATALOG_BY_ID[exerciseId];
+  if (!target) return [];
+
+  const allowed = new Set(availableEquipment);
+  allowed.add('bodyweight');
+  if (allowed.has('adj-dumbbells')) allowed.add('dumbbells');
+  if (allowed.has('bench')) allowed.add('chair');
+
+  const directSubSet = new Set(target.substitutes);
+  const scored: Array<{ exercise: Exercise; score: number }> = [];
+
+  for (const ex of CATALOG) {
+    if (ex.id === exerciseId) continue;
+
+    // Check equipment compatibility
+    if (ex.equipmentIds.length > 0) {
+      const canDo = ex.equipmentIds.every((req) => allowed.has(req));
+      if (!canDo) continue;
+    }
+
+    let score = 0;
+
+    // Explicitly recommended substitutes get top priority
+    if (directSubSet.has(ex.id)) {
+      score += 1000;
+    }
+
+    // Movement pattern match
+    if (ex.movement === target.movement) {
+      score += 100;
+    }
+
+    // Primary muscle overlap
+    for (const p of target.primary) {
+      if (ex.primary.includes(p)) score += 50;
+      else if (ex.secondary.includes(p)) score += 20;
+    }
+
+    // Secondary muscle overlap
+    for (const s of target.secondary) {
+      if (ex.primary.includes(s)) score += 20;
+      else if (ex.secondary.includes(s)) score += 10;
+    }
+
+    // Difficulty proximity
+    const diffDelta = Math.abs(ex.difficulty - target.difficulty);
+    if (diffDelta === 0) score += 15;
+    else if (diffDelta === 1) score += 5;
+
+    // Prefer curated atlas exercises slightly
+    if (ex.source === 'atlas') {
+      score += 5;
+    }
+
+    if (score > 50) {
+      scored.push({ exercise: ex, score });
+    }
+  }
+
+  scored.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return a.exercise.name.localeCompare(b.exercise.name);
+  });
+
+  return scored.map((s) => s.exercise);
 }

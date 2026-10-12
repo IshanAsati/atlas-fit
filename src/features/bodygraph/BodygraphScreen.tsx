@@ -1,429 +1,868 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useStore } from '../../data/store';
-import { MUSCLE_BY_ID } from '../../data/muscles';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
-  ACTIVITY_LEGEND,
-  Credit,
-  EmptyState,
-  Sheet,
-  TARGET_LEGEND,
-  TopBar,
-} from '../../design/ui';
-import { Bodygraph, type TargetState } from './Bodygraph';
-import type { View } from './geometry';
-import type { MuscleId } from '../../data/types';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts';
+import type { Exercise, MuscleId, WorkoutSession } from '../../data/types';
+import { MUSCLE_BY_ID } from '../../data/muscles';
+import { CATALOG, CATALOG_BY_ID, searchExercises } from '../../data/catalog';
+import { getWorkoutSessions } from '../../data/db';
+import { downloadBackupFile, importBackupFile } from '../../data/backup';
+import { Bodygraph, type BodygraphMode, type BodygraphView, type TimeWindow } from './Bodygraph';
+import './Bodygraph.css';
 
-/**
- * Screen 6 — Bodygraph & progress (§4.6).
- *
- * Mode A "Exercise targets": pick an exercise from the catalog and see the
- * muscles it classifies as primary / secondary.
- * Mode B "Training activity": shading derived from *real* logged working sets
- * over a 7 / 30 / 90-day window — an estimate, never a measured activation or
- * recovery score. No demo numbers are ever substituted for missing logs.
- */
+export interface BodygraphScreenProps {
+  /** Optional callback when an exercise is selected */
+  onSelectExercise?: (exerciseId: string) => void;
+  /** Navigation callback to switch top-level tabs */
+  onNavigateTab?: (tab: string) => void;
+  /** Optional custom CSS classes */
+  className?: string;
+}
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const WINDOW_OPTIONS: Array<7 | 30 | 90> = [7, 30, 90];
+export const BodygraphScreen: React.FC<BodygraphScreenProps> = ({
+  onSelectExercise,
+  onNavigateTab: _onNavigateTab,
+  className = '',
+}) => {
+  // Mode state: 'targets' (Mode A) vs 'activity' (Mode B)
+  const [mode, setMode] = useState<BodygraphMode>('targets');
+  const [view, setView] = useState<BodygraphView>('front');
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>('week');
 
-const BAR_COLOR = '#57B9FA';
-const AXIS_TEXT = '#A9A2B2';
-const AXIS_LINE = '#3d3549';
+  // Exercise picker state for Mode A
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string>('push-up');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-export function BodygraphScreen() {
-  const { sessions, catalog, byId } = useStore();
-  const navigate = useNavigate();
+  // Sessions and data state
+  const [sessions, setSessions] = useState<WorkoutSession[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [mode, setMode] = useState<'targets' | 'activity'>('targets');
-  const [view, setView] = useState<View>('front');
-  const [query, setQuery] = useState('');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  // Start with a clearly labelled example so the muscle color mapping is visible on first open.
-  const [selectedId, setSelectedId] = useState<string | null>('push-up');
-  const [windowDays, setWindowDays] = useState<7 | 30 | 90>(7);
-  const [sheetMuscle, setSheetMuscle] = useState<MuscleId | null>(null);
+  // History log expansion state
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
 
-  /* ---------- Mode A: searchable exercise selector ---------- */
+  // Backup / Restore feedback & modal state
+  const [backupStatus, setBackupStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [showRestoreConfirm, setShowRestoreConfirm] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const sorted = [...catalog].sort((a, b) => a.name.localeCompare(b.name));
-    const matched = q
-      ? sorted.filter(
-          (e) =>
-            e.name.toLowerCase().includes(q) ||
-            e.aliases.some((a) => a.toLowerCase().includes(q)),
-        )
-      : sorted;
-    if (q) return matched.slice(0, 40);
-    const selected = selectedId ? matched.find((exercise) => exercise.id === selectedId) : undefined;
-    const rest = selected ? matched.filter((exercise) => exercise.id !== selected.id) : matched;
-    return [...(selected ? [selected] : []), ...rest].slice(0, 12);
-  }, [catalog, query, selectedId]);
+  // Fetch session history from Dexie
+  const loadSessions = useCallback(async () => {
+    try {
+      const data = await getWorkoutSessions();
+      setSessions(data);
+    } catch (err) {
+      console.error('Failed to load workout sessions for bodygraph:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const selectedExercise = selectedId ? byId(selectedId) : undefined;
+  useEffect(() => {
+    loadSessions();
+  }, [loadSessions]);
 
-  const targets = useMemo(() => {
-    const ex = selectedId ? byId(selectedId) : undefined;
-    if (!ex) return undefined;
-    const map: Partial<Record<MuscleId, TargetState>> = {};
-    for (const m of ex.primary) map[m] = 'primary';
-    for (const m of ex.secondary) if (map[m] !== 'primary') map[m] = 'secondary';
-    return map;
-  }, [selectedId, byId]);
+  // Selected exercise resolution
+  const selectedExercise = useMemo<Exercise | null>(() => {
+    return CATALOG_BY_ID[selectedExerciseId] ?? CATALOG[0] ?? null;
+  }, [selectedExerciseId]);
 
-  /* ---------- Mode B: activity from real logs only ---------- */
+  // Exercise search filtering for Mode A
+  const exerciseSearchResults = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return CATALOG.slice(0, 15);
+    }
+    return searchExercises(searchQuery).slice(0, 20);
+  }, [searchQuery]);
 
-  const activity = useMemo(() => {
-    const acc: Partial<Record<MuscleId, number>> = {};
-    const cutoff = Date.now() - windowDays * DAY_MS;
-    for (const s of sessions) {
-      if (s.state !== 'done') continue;
-      const at = s.endedAt ?? s.startedAt;
-      if (at < cutoff) continue;
-      for (const item of s.items) {
-        const done = item.sets.filter((x) => x.done).length;
-        if (done === 0) continue;
-        const ex = byId(item.exerciseId);
-        if (!ex) continue;
-        for (const m of ex.primary) acc[m] = (acc[m] ?? 0) + done;
-        for (const m of ex.secondary) acc[m] = (acc[m] ?? 0) + done * 0.5;
+  // Handle exercise selection
+  const handleSelectExercise = (exerciseId: string) => {
+    setSelectedExerciseId(exerciseId);
+    setSearchQuery('');
+    setIsDropdownOpen(false);
+    onSelectExercise?.(exerciseId);
+  };
+
+  // Toggle workout history item expansion
+  const toggleSessionExpand = (sessionId: string) => {
+    setExpandedSessionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) {
+        next.delete(sessionId);
+      } else {
+        next.add(sessionId);
       }
-    }
-    // Round only at aggregation — fractional secondary credit is intentional.
-    for (const id of Object.keys(acc) as MuscleId[]) {
-      acc[id] = Math.round(acc[id] ?? 0);
-    }
-    return acc;
-  }, [sessions, byId, windowDays]);
+      return next;
+    });
+  };
 
-  /* ---------- Weekly chart: completed working sets per day (real data) ---------- */
-
-  const chart = useMemo(() => {
-    const now = new Date();
-    const rows: Array<{ day: string; sets: number }> = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(now);
-      d.setDate(now.getDate() - i);
-      const start = new Date(d).setHours(0, 0, 0, 0);
-      const end = start + DAY_MS;
-      let sets = 0;
-      for (const s of sessions) {
-        if (s.state !== 'done') continue;
-        const at = s.endedAt ?? s.startedAt;
-        if (at < start || at >= end) continue;
-        for (const item of s.items) sets += item.sets.filter((x) => x.done).length;
-      }
-      rows.push({ day: DAY_LABELS[(d.getDay() + 6) % 7], sets });
-    }
-    return rows;
+  // Completed sessions list
+  const completedSessions = useMemo(() => {
+    return sessions
+      .filter((s) => s.state === 'done')
+      .sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt));
   }, [sessions]);
 
-  const recent = useMemo(
-    () =>
-      sessions
-        .filter((s) => s.state === 'done')
-        .sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt))
-        .slice(0, 5),
-    [sessions],
-  );
+  // Calculate volume stats per muscle group for Weekly Volume Chart (§4.6)
+  const volumeChartData = useMemo(() => {
+    const now = Date.now();
+    const cutoff =
+      timeWindow === 'week'
+        ? now - 7 * 24 * 60 * 60 * 1000
+        : timeWindow === 'month'
+          ? now - 30 * 24 * 60 * 60 * 1000
+          : 0;
 
-  /* ---------- Muscle detail sheet ---------- */
+    const muscleSets: Partial<Record<MuscleId, number>> = {};
 
-  const sheetExercises = useMemo(() => {
-    if (!sheetMuscle) return [];
-    const target: MuscleId = sheetMuscle;
-    return catalog
-      .filter((e) => e.primary.includes(target) || e.secondary.includes(target))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }, [sheetMuscle, catalog]);
+    for (const s of completedSessions) {
+      const timestamp = s.endedAt ?? s.startedAt;
+      if (cutoff > 0 && timestamp < cutoff) continue;
 
-  const sheetLogSets = useMemo(() => {
-    if (!sheetMuscle) return 0;
-    const target: MuscleId = sheetMuscle;
-    const cutoff = Date.now() - 30 * DAY_MS;
-    let n = 0;
-    for (const s of sessions) {
-      if (s.state !== 'done') continue;
-      if ((s.endedAt ?? s.startedAt) < cutoff) continue;
       for (const item of s.items) {
-        const ex = byId(item.exerciseId);
+        const ex = CATALOG_BY_ID[item.exerciseId];
         if (!ex) continue;
-        if (!ex.primary.includes(target) && !ex.secondary.includes(target)) continue;
-        n += item.sets.filter((x) => x.done).length;
+
+        const doneSets = item.sets.filter((st) => st.done).length;
+        if (doneSets === 0) continue;
+
+        for (const p of ex.primary) {
+          muscleSets[p] = (muscleSets[p] ?? 0) + doneSets;
+        }
+        for (const sec of ex.secondary) {
+          muscleSets[sec] = (muscleSets[sec] ?? 0) + Math.round(doneSets * 0.5);
+        }
       }
     }
-    return n;
-  }, [sheetMuscle, sessions, byId]);
 
-  const sheetMeta = sheetMuscle ? MUSCLE_BY_ID[sheetMuscle] : null;
+    // Standard representative muscle groups to display in the chart
+    const targetGroups: Array<{ label: string; id: MuscleId }> = [
+      { label: 'Chest', id: 'chest' },
+      { label: 'Lats/Back', id: 'lats' },
+      { label: 'Upper Back', id: 'upper_back' },
+      { label: 'Shoulders', id: 'front_delts' },
+      { label: 'Triceps', id: 'triceps' },
+      { label: 'Biceps', id: 'biceps' },
+      { label: 'Quads', id: 'quads' },
+      { label: 'Hamstrings', id: 'hamstrings' },
+      { label: 'Glutes', id: 'glutes' },
+      { label: 'Core', id: 'abs' },
+      { label: 'Calves', id: 'calves' },
+    ];
 
-  const isTargets = mode === 'targets';
+    return targetGroups.map((group) => ({
+      name: group.label,
+      sets: Math.round(muscleSets[group.id] ?? 0),
+    }));
+  }, [completedSessions, timeWindow]);
+
+  const totalVolumeInWindow = useMemo(() => {
+    return volumeChartData.reduce((acc, curr) => acc + curr.sets, 0);
+  }, [volumeChartData]);
+
+  // Backup Export Handler
+  const handleExportBackup = async () => {
+    try {
+      await downloadBackupFile();
+      setBackupStatus({
+        type: 'success',
+        message: 'Backup exported and downloaded successfully as JSON.',
+      });
+      setTimeout(() => setBackupStatus(null), 5000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBackupStatus({
+        type: 'error',
+        message: `Failed to export backup: ${msg}`,
+      });
+    }
+  };
+
+  // Restore file selection handler
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPendingFile(file);
+    setShowRestoreConfirm(true);
+    // Reset file input so same file can be re-selected if needed
+    e.target.value = '';
+  };
+
+  // Execute restore after user confirmation
+  const handleConfirmRestore = async () => {
+    if (!pendingFile) return;
+    setShowRestoreConfirm(false);
+
+    try {
+      const res = await importBackupFile(pendingFile);
+      if (res.success) {
+        setBackupStatus({
+          type: 'success',
+          message: 'Database backup restored successfully! Reloading records…',
+        });
+        await loadSessions();
+        setTimeout(() => setBackupStatus(null), 5000);
+      } else {
+        setBackupStatus({
+          type: 'error',
+          message: `Restore failed: ${res.error || 'Unknown error'}`,
+        });
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setBackupStatus({
+        type: 'error',
+        message: `Error reading backup file: ${msg}`,
+      });
+    } finally {
+      setPendingFile(null);
+    }
+  };
+
+  const handleCancelRestore = () => {
+    setShowRestoreConfirm(false);
+    setPendingFile(null);
+  };
+
+  if (loading) {
+    return (
+      <main className="view" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <p className="small">Loading muscle map & tracking data…</p>
+      </main>
+    );
+  }
 
   return (
-    <>
-      <TopBar title="Body & progress" sub="Original cartoon muscle map" />
+    <div className={`bodygraph-screen ${className}`}>
+      {/* Top Header */}
+      <header className="topbar">
+        <h1>Body & Progress</h1>
+        <p>Interactive 2D cartoon muscle map & volume tracking</p>
+      </header>
 
       <main className="view">
-        {/* Mode switch */}
-        <div className="seg" role="group" aria-label="Bodygraph mode">
+        {/* Mode Switcher Segmented Pills (§4.6) */}
+        <div className="seg" role="group" aria-label="Bodygraph Mode Selector">
           <button
             type="button"
-            aria-pressed={isTargets}
-            style={{ minHeight: 44 }}
+            aria-pressed={mode === 'targets'}
             onClick={() => setMode('targets')}
           >
-            Exercise targets
+            Exercise Targets (Mode A)
           </button>
           <button
             type="button"
-            aria-pressed={!isTargets}
-            style={{ minHeight: 44 }}
+            aria-pressed={mode === 'activity'}
             onClick={() => setMode('activity')}
           >
-            Training activity
+            Training Activity Heatmap (Mode B)
           </button>
         </div>
 
-        {isTargets ? (
-          <section className="panel">
-            <div className="row between">
-              <div className="grow">
-                <p className="small" style={{ margin: '0 0 4px' }}>Exercise targets</p>
-                <h2 className="h-sec">{selectedExercise?.name ?? 'Pick an exercise'}</h2>
-              </div>
-              <button type="button" className="btn ghost small-btn" onClick={() => setPickerOpen(true)}>Change</button>
-            </div>
-          </section>
-        ) : (
-          <section className="panel">
-            <div className="row between" style={{ marginBottom: 10 }}>
-              <h2 className="h-sec">Time window</h2>
-              <span className="small">Your logs only</span>
-            </div>
-            <div className="chips" role="group" aria-label="Time window">
-              {WINDOW_OPTIONS.map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  className="chip"
-                  aria-pressed={windowDays === w}
-                  style={{ minHeight: 44 }}
-                  onClick={() => setWindowDays(w)}
+        {/* Mode A: Exercise Search & Picker (§4.6) */}
+        {mode === 'targets' && (
+          <section className="panel" aria-label="Exercise muscle target picker">
+            <h2 className="h-sec" style={{ marginBottom: 8 }}>
+              Select Exercise to Highlight Targets
+            </h2>
+
+            <div style={{ position: 'relative' }}>
+              <input
+                type="search"
+                className="input"
+                placeholder="Search exercise (e.g. Bench Press, Squat, Pull-up)..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsDropdownOpen(true);
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+                aria-label="Search exercises to inspect targets"
+              />
+
+              {/* Autocomplete Results Dropdown */}
+              {isDropdownOpen && exerciseSearchResults.length > 0 && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    zIndex: 25,
+                    background: 'var(--surface)',
+                    border: '1px solid var(--hairline)',
+                    borderRadius: 'var(--radius-s)',
+                    maxHeight: 240,
+                    overflowY: 'auto',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    marginTop: 4,
+                  }}
                 >
-                  Last {w} days
-                </button>
-              ))}
+                  {exerciseSearchResults.map((ex) => (
+                    <button
+                      key={ex.id}
+                      type="button"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        textAlign: 'left',
+                        padding: '10px 14px',
+                        background: ex.id === selectedExerciseId ? 'var(--surface-2)' : 'transparent',
+                        border: 0,
+                        borderBottom: '1px solid var(--hairline)',
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                      }}
+                      onClick={() => handleSelectExercise(ex.id)}
+                    >
+                      <div style={{ fontWeight: 650 }}>{ex.name}</div>
+                      <div className="small" style={{ fontSize: 11, color: 'var(--text-2)' }}>
+                        Primary: {ex.primary.map((p) => MUSCLE_BY_ID[p]?.short || p).join(', ')}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Selected Exercise Badge Details */}
+            {selectedExercise && (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: '10px 12px',
+                  background: 'var(--bg-raised)',
+                  borderRadius: 'var(--radius-s)',
+                  border: '1px solid var(--hairline)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <strong style={{ fontSize: 15, color: 'var(--text)' }}>
+                    {selectedExercise.name}
+                  </strong>
+                  <span
+                    className="chip"
+                    style={{
+                      fontSize: 10,
+                      padding: '2px 8px',
+                      minHeight: 20,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {selectedExercise.movement}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-2)', alignSelf: 'center' }}>
+                    Primary:
+                  </span>
+                  {selectedExercise.primary.map((p) => (
+                    <span
+                      key={p}
+                      style={{
+                        fontSize: 11,
+                        background: '#FF4757',
+                        color: '#ffffff',
+                        padding: '2px 7px',
+                        borderRadius: 6,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {MUSCLE_BY_ID[p]?.short || p}
+                    </span>
+                  ))}
+
+                  {selectedExercise.secondary.length > 0 && (
+                    <>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: 'var(--text-2)',
+                          alignSelf: 'center',
+                          marginLeft: 6,
+                        }}
+                      >
+                        Secondary:
+                      </span>
+                      {selectedExercise.secondary.map((s) => (
+                        <span
+                          key={s}
+                          style={{
+                            fontSize: 11,
+                            background: '#00D2FF',
+                            color: '#021217',
+                            padding: '2px 7px',
+                            borderRadius: 6,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {MUSCLE_BY_ID[s]?.short || s}
+                        </span>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* Mode B: Time Window Selector (§4.6) */}
+        {mode === 'activity' && (
+          <section className="panel" aria-label="Heatmap time window selection">
+            <div className="row between" style={{ marginBottom: 6 }}>
+              <h2 className="h-sec">Activity Time Window</h2>
+              <span className="small">{totalVolumeInWindow} total sets logged</span>
+            </div>
+            <p className="small" style={{ margin: '0 0 10px', color: 'var(--text-2)' }}>
+              Training activity estimate based on logged sets (§4.6)
+            </p>
+
+            <div className="bodygraph-window-seg" role="group" aria-label="Heatmap time window">
+              <button
+                type="button"
+                aria-pressed={timeWindow === 'week'}
+                onClick={() => setTimeWindow('week')}
+              >
+                Last 7 Days
+              </button>
+              <button
+                type="button"
+                aria-pressed={timeWindow === 'month'}
+                onClick={() => setTimeWindow('month')}
+              >
+                Last 30 Days
+              </button>
+              <button
+                type="button"
+                aria-pressed={timeWindow === 'all'}
+                onClick={() => setTimeWindow('all')}
+              >
+                All Time
+              </button>
             </div>
           </section>
         )}
 
-        {/* Figure */}
-        <section className="panel">
-          <div className="row between" style={{ marginBottom: 10 }}>
-            <h2 className="h-sec">{isTargets ? 'Muscle map' : 'Training activity'}</h2>
-            <div className="chips" role="group" aria-label="Body view">
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={view === 'front'}
-                style={{ minHeight: 44 }}
-                onClick={() => setView('front')}
-              >
-                Front
-              </button>
-              <button
-                type="button"
-                className="chip"
-                aria-pressed={view === 'back'}
-                style={{ minHeight: 44 }}
-                onClick={() => setView('back')}
-              >
-                Back
-              </button>
-            </div>
-          </div>
+        {/* Interactive 3D Cartoon Bodygraph (§4.6, §5.1, §5.2, §8) */}
+        <section
+          className="panel"
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+          aria-label="Interactive Cartoon Bodygraph"
+        >
+          <Bodygraph
+            mode={mode}
+            view={view}
+            onViewChange={setView}
+            timeWindow={timeWindow}
+            onTimeWindowChange={setTimeWindow}
+            showWindowToggle={false}
+            selectedExercise={mode === 'targets' ? selectedExercise : null}
+            sessions={sessions}
+            catalog={CATALOG}
+            showModeToggle={false} // Mode handled by outer screen pills
+            showViewToggle={true} // 3D flip Front/Back toggle
+            showLegend={true}
+            onSelectExercise={(exId) => {
+              setSelectedExerciseId(exId);
+              setMode('targets');
+              onSelectExercise?.(exId);
+            }}
+          />
+          <p className="small" style={{ textAlign: 'center', marginTop: 10 }}>
+            Tap any muscle on the cartoon figure to inspect targeting exercises and history.
+          </p>
+        </section>
 
-          <div style={{ perspective: '900px' }}>
-            <div
-              className="bodywrap body-stage flip"
-              style={{
-                transform: view === 'back' ? 'rotateY(12deg)' : 'none',
-              }}
-            >
-              <Bodygraph
-                view={view}
-                targets={isTargets ? targets : undefined}
-                activity={isTargets ? undefined : activity}
-                selected={sheetMuscle}
-                onSelect={setSheetMuscle}
-              />
-            </div>
+        {/* Weekly Volume Chart (using recharts) (§4.6) */}
+        <section className="panel" aria-label="Muscle volume chart">
+          <div className="row between" style={{ marginBottom: 8 }}>
+            <h2 className="h-sec">Muscle Volume Distribution</h2>
+            <span className="small">
+              {timeWindow === 'week' ? 'Last 7 Days' : timeWindow === 'month' ? 'Last 30 Days' : 'All Time'}
+            </span>
           </div>
+          <p className="small" style={{ margin: '0 0 14px' }}>
+            Completed working sets per muscle group.
+          </p>
 
-          {isTargets ? (
-            <>
-              {TARGET_LEGEND}
-              <p className="small" style={{ marginTop: 8 }}>
-                Tap a muscle to explore. Colours classify targets, not measured activation.
+          {totalVolumeInWindow === 0 ? (
+            <div className="empty" style={{ padding: '20px 14px' }}>
+              <p style={{ margin: 0, fontWeight: 600 }}>No logged working sets in this period.</p>
+              <p className="small" style={{ margin: '4px 0 0' }}>
+                Complete a workout to view your muscle volume chart.
               </p>
-            </>
+            </div>
           ) : (
-            <>
-              {ACTIVITY_LEGEND}
-              <p className="small" style={{ marginTop: 8 }}>
-                Based on your logs — an estimate from recorded working sets, not recovery or
-                hypertrophy measurement.
-              </p>
-            </>
+            <div style={{ width: '100%', height: 230, minHeight: 230 }}>
+              <ResponsiveContainer width="100%" height={230}>
+                <BarChart
+                  data={volumeChartData}
+                  margin={{ top: 10, right: 10, left: -24, bottom: 24 }}
+                >
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: '#94A3B8', fontSize: 10 }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                    tickLine={false}
+                    interval={0}
+                    angle={-30}
+                    textAnchor="end"
+                  />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fill: '#94A3B8', fontSize: 11 }}
+                    axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                    tickLine={false}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(0, 229, 255, 0.06)' }}
+                    contentStyle={{
+                      backgroundColor: '#161A23',
+                      borderColor: 'rgba(255,255,255,0.12)',
+                      borderRadius: 10,
+                      color: '#F8FAFC',
+                      fontSize: 12,
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                    }}
+                    itemStyle={{ color: '#00E5FF' }}
+                    formatter={(value: any) => [`${value} sets`, 'Working Sets']}
+                  />
+                  <Bar dataKey="sets" fill="#00E5FF" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </section>
 
-        {/* Weekly progress */}
-        <section className="panel">
-          <h2 className="h-sec" style={{ marginBottom: 8 }}>
-            Working sets (last 7 days)
-          </h2>
-          <div style={{ width: '100%', height: 180 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chart} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
-                <XAxis
-                  dataKey="day"
-                  stroke={AXIS_TEXT}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={{ stroke: AXIS_LINE }}
-                  interval={0}
-                />
-                <YAxis
-                  stroke={AXIS_TEXT}
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                  allowDecimals={false}
-                  width={44}
-                />
-                <Tooltip
-                  cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                  contentStyle={{
-                    background: '#1a1522',
-                    border: `1px solid ${AXIS_LINE}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                    color: '#EDEAF5',
-                  }}
-                  labelStyle={{ color: AXIS_TEXT }}
-                  formatter={(value) => [`${value} sets`, 'Working sets']}
-                />
-                <Bar dataKey="sets" fill={BAR_COLOR} radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+        {/* Workout History Log (§4.6) */}
+        <section className="panel" aria-label="Workout history logs">
+          <div className="row between" style={{ marginBottom: 10 }}>
+            <h2 className="h-sec">Workout History Log</h2>
+            <span className="small">{completedSessions.length} sessions</span>
           </div>
-        </section>
 
-        {/* Recent sessions */}
-        <section>
-          <h2 className="h-sec" style={{ marginBottom: 8 }}>
-            Recent sessions
-          </h2>
-          {recent.length > 0 ? (
-            <div className="panel" style={{ padding: '4px 0' }}>
-              {recent.map((s) => {
-                const sets = s.items.reduce(
-                  (n, it) => n + it.sets.filter((x) => x.done).length,
+          {completedSessions.length === 0 ? (
+            <div className="empty">
+              <p style={{ fontWeight: 650, margin: '0 0 4px', color: 'var(--text)' }}>
+                No completed workouts yet.
+              </p>
+              <p className="small" style={{ margin: 0 }}>
+                Finish a workout session to see your full exercise history and load logs here.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {completedSessions.map((session) => {
+                const isExpanded = expandedSessionIds.has(session.id);
+                const dateStr = new Date(session.endedAt ?? session.startedAt).toLocaleDateString(
+                  undefined,
+                  {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  },
+                );
+
+                const totalCompletedSets = session.items.reduce(
+                  (total, item) => total + item.sets.filter((s) => s.done).length,
                   0,
                 );
-                const when = new Date(s.endedAt ?? s.startedAt).toLocaleDateString(undefined, {
-                  day: 'numeric',
-                  month: 'short',
-                });
+
+                const totalLoadKg = session.items.reduce((total, item) => {
+                  return (
+                    total +
+                    item.sets
+                      .filter((s) => s.done && s.loadKg && s.reps)
+                      .reduce((sub, s) => sub + (s.loadKg || 0) * (s.reps || 0), 0)
+                  );
+                }, 0);
+
+                const durationMs =
+                  session.endedAt && session.startedAt
+                    ? session.endedAt - session.startedAt
+                    : 0;
+                const durationMin = Math.max(1, Math.round(durationMs / 60000));
+
                 return (
-                  <div key={s.id} className="exrow" style={{ cursor: 'default' }}>
-                    <span className="dot" aria-hidden="true" />
-                    <span className="grow">{s.title}</span>
-                    <span className="meta">
-                      {when} · {sets} sets
-                    </span>
+                  <div
+                    key={session.id}
+                    style={{
+                      background: 'var(--bg-raised)',
+                      borderRadius: 'var(--radius-s)',
+                      border: '1px solid var(--hairline)',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {/* Header Row (Click to Expand/Collapse) */}
+                    <button
+                      type="button"
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        background: 'transparent',
+                        border: 0,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        color: 'var(--text)',
+                        fontFamily: 'inherit',
+                      }}
+                      onClick={() => toggleSessionExpand(session.id)}
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="row between">
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 15 }}>{session.title}</div>
+                          <div className="small" style={{ marginTop: 2 }}>
+                            {dateStr} · {durationMin} min · {totalCompletedSets} sets
+                            {totalLoadKg > 0 ? ` · ${Math.round(totalLoadKg)} kg load` : ''}
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span
+                            className="chip"
+                            style={{
+                              fontSize: 10,
+                              padding: '2px 6px',
+                              minHeight: 20,
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            {session.location}
+                          </span>
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            style={{
+                              transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                              transition: 'transform 200ms ease',
+                            }}
+                            aria-hidden="true"
+                          >
+                            <path d="M6 9l6 6 6-6" />
+                          </svg>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Expanded Exercise Breakdown */}
+                    {isExpanded && (
+                      <div
+                        style={{
+                          borderTop: '1px solid var(--hairline)',
+                          padding: '12px 14px',
+                          background: 'rgba(0,0,0,0.2)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 12,
+                        }}
+                      >
+                        {session.items.map((item, itemIdx) => {
+                          const ex = CATALOG_BY_ID[item.exerciseId];
+                          const completedSets = item.sets.filter((s) => s.done);
+
+                          return (
+                            <div key={itemIdx} style={{ fontSize: 13 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <strong style={{ color: 'var(--text)' }}>
+                                  {ex?.name || item.exerciseId}
+                                </strong>
+                                <span className="small">{completedSets.length} sets completed</span>
+                              </div>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  gap: 6,
+                                  marginTop: 6,
+                                }}
+                              >
+                                {item.sets.map((set, setIdx) => (
+                                  <span
+                                    key={setIdx}
+                                    style={{
+                                      fontSize: 11,
+                                      padding: '3px 8px',
+                                      borderRadius: 6,
+                                      background: set.done ? 'var(--surface-2)' : 'transparent',
+                                      border: '1px solid var(--hairline)',
+                                      color: set.done ? 'var(--text)' : 'var(--text-2)',
+                                      opacity: set.done ? 1 : 0.6,
+                                    }}
+                                  >
+                                    Set {setIdx + 1}:{' '}
+                                    {set.reps !== null ? `${set.reps} reps` : '—'}{' '}
+                                    {set.loadKg !== null && set.loadKg > 0 ? `@ ${set.loadKg} kg` : '(BW)'}
+                                    {set.effort === 1 ? ' · Easy' : set.effort === 3 ? ' · Hard' : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-          ) : (
-            <EmptyState
-              title="No completed sessions yet"
-              body="Your training activity will appear after you log workouts."
-            />
           )}
         </section>
 
-        <Credit />
+        {/* Data Backup & Restore Section (§9) */}
+        <section className="panel" aria-label="Database backup and restore">
+          <h2 className="h-sec" style={{ marginBottom: 4 }}>
+            Data Backup & Restore
+          </h2>
+          <p className="small" style={{ margin: '0 0 14px' }}>
+            All your training data, history, and generated routines live purely in your local browser
+            database. Export a JSON backup file to prevent data loss or restore to another device.
+          </p>
 
-        <Sheet open={pickerOpen} onClose={() => setPickerOpen(false)} title="Pick an exercise">
-          <div className="field">
-            <label htmlFor="body-exercise-search">Search exercises</label>
-            <input id="body-exercise-search" className="input" type="search" value={query}
-              placeholder="Name or alias" onChange={(event) => setQuery(event.target.value)} />
-          </div>
-          <p className="small">Choose a movement to see its primary and secondary targets.</p>
-          {results.map((exercise) => (
-            <button key={exercise.id} type="button" className="exrow"
-              aria-pressed={exercise.id === selectedId}
-              onClick={() => { setSelectedId(exercise.id); setPickerOpen(false); setQuery(''); }}>
-              <span className="dot" aria-hidden="true" />
-              <span className="grow">{exercise.name}</span>
-              <span className="meta">{exercise.id === selectedId ? 'Selected' : 'View targets'}</span>
+          {/* Feedback banner */}
+          {backupStatus && (
+            <div
+              className="banner"
+              style={{
+                marginBottom: 12,
+                borderLeftColor: backupStatus.type === 'success' ? 'var(--good)' : 'var(--danger)',
+              }}
+            >
+              {backupStatus.message}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn primary grow"
+              onClick={handleExportBackup}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export Backup (JSON)
             </button>
-          ))}
-          {results.length === 0 ? <p className="small" role="status">No matches. Try another exercise name.</p> : null}
-        </Sheet>
 
-        {/* Muscle detail sheet */}
-        <Sheet
-          open={sheetMuscle !== null}
-          onClose={() => setSheetMuscle(null)}
-          title={sheetMeta ? sheetMeta.name : ''}
-        >
-          {sheetMeta ? (
-            <>
-              <p className="sub" style={{ margin: '0 0 12px' }}>
-                {sheetMeta.blurb}
-              </p>
-              <p className="small" style={{ margin: '0 0 14px' }}>
-                {sheetLogSets > 0
-                  ? `Your training log: ${sheetLogSets} working sets in the last 30 days`
-                  : 'No logged sets yet.'}
-              </p>
-              <h3 className="h-sec" style={{ margin: '0 0 6px' }}>
-                Exercises in your library
+            <button
+              type="button"
+              className="btn ghost grow"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Restore Backup
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+          </div>
+        </section>
+
+        {/* Confirmation Modal for Database Restore */}
+        {showRestoreConfirm && (
+          <div className="scrim" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div
+              className="panel"
+              style={{
+                width: '90%',
+                maxWidth: 400,
+                background: 'var(--bg-raised)',
+                border: '1.5px solid var(--accent)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.8)',
+              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="restore-modal-title"
+            >
+              <h3 id="restore-modal-title" style={{ margin: '0 0 8px', fontSize: 18 }}>
+                Confirm Backup Restore
               </h3>
-              {sheetExercises.length > 0 ? (
-                sheetExercises.map((ex) => (
-                  <button
-                    key={ex.id}
-                    type="button"
-                    className="exrow"
-                    onClick={() => {
-                      setSheetMuscle(null);
-                      navigate(`/exercises/${ex.id}`);
-                    }}
-                  >
-                    <span className="dot" aria-hidden="true" />
-                    <span className="grow">{ex.name}</span>
-                    <span className="meta">
-                      {ex.primary.includes(sheetMeta.id) ? 'primary' : 'secondary'}
-                    </span>
-                  </button>
-                ))
-              ) : (
-                <p className="small">No exercises in your library target this muscle.</p>
-              )}
-            </>
-          ) : null}
-        </Sheet>
+              <p className="small" style={{ margin: '0 0 16px', lineHeight: 1.5 }}>
+                Restoring <strong style={{ color: 'var(--text)' }}>{pendingFile?.name}</strong> will overwrite
+                your existing local workout plans, user preferences, and logged sessions with the data in the
+                file. This action cannot be undone.
+              </p>
+
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn ghost small-btn"
+                  onClick={handleCancelRestore}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn danger small-btn"
+                  onClick={handleConfirmRestore}
+                >
+                  Confirm & Restore
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Visible Attribution (§6.1, §4.6) */}
+        <footer className="credit" style={{ textAlign: 'center', marginTop: 14 }}>
+          <p>
+            Exercise data by{' '}
+            <a href="https://repdb.co" target="_blank" rel="noopener noreferrer">
+              RepDB (repdb.co)
+            </a>{' '}
+            · Offline-first personal training
+          </p>
+        </footer>
       </main>
-    </>
+    </div>
   );
-}
+};

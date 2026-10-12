@@ -57,8 +57,6 @@ export interface Exercise {
   cues: string[];
   mistakes: string[];
   substitutes: string[];
-  /** Optional licensed illustration URLs (cached on demand for offline use). */
-  media?: { start?: string; peak?: string };
 }
 
 export interface UserProfile {

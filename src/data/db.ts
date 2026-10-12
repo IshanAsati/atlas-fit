@@ -1,87 +1,195 @@
-import Dexie, { type Table } from 'dexie';
+import { Dexie, type EntityTable } from 'dexie';
 import type {
-  ExerciseFeedback,
-  Plan,
   UserProfile,
+  Plan,
   WorkoutSession,
+  ExerciseFeedback,
 } from './types';
+import { DEFAULT_EQUIPMENT } from './equipment';
 
-/**
- * Offline storage (§9): Dexie over IndexedDB for plans + structured history.
- * localStorage is only for lightweight UI prefs. Schema-versioned (v1).
- *
- * Privacy: local by default, never uploaded. iOS may evict website storage,
- * so export reminders + import/restore flow live in `backup.ts`.
- */
-
-interface KeyVal {
-  key: string;
-  value: unknown;
+export interface ActiveWorkoutRecord {
+  id: string;
+  session: WorkoutSession;
+  updatedAt: number;
 }
 
-class AtlasDB extends Dexie {
-  keyval!: Table<KeyVal, string>;
-  plans!: Table<Plan, string>;
-  sessions!: Table<WorkoutSession, string>;
-  feedback!: Table<ExerciseFeedback, string>;
+export class AtlasFitDatabase extends Dexie {
+  profiles!: EntityTable<UserProfile, 'displayName'>;
+  plans!: EntityTable<Plan, 'id'>;
+  sessions!: EntityTable<WorkoutSession, 'id'>;
+  feedback!: EntityTable<ExerciseFeedback, 'exerciseId'>;
+  activeWorkout!: EntityTable<ActiveWorkoutRecord, 'id'>;
 
   constructor() {
-    super('atlas-fit');
+    super('AtlasFitDatabase');
     this.version(1).stores({
-      keyval: 'key',
-      plans: 'id, createdAt',
-      sessions: 'id, startedAt, state',
+      profiles: 'displayName',
+      plans: 'id, createdAt, location, goal',
+      sessions: 'id, startedAt, endedAt, state, planId',
       feedback: 'exerciseId, updatedAt',
+      activeWorkout: 'id, updatedAt',
     });
   }
 }
 
-export const db = new AtlasDB();
+export const db = new AtlasFitDatabase();
 
-const PROFILE_KEY = 'profile:v1';
+export const DEFAULT_PROFILE: UserProfile = {
+  displayName: 'Lifter',
+  goal: 'strength',
+  experience: 'some',
+  activeLocation: 'home',
+  equipment: {
+    home: [...DEFAULT_EQUIPMENT.home],
+    gym: [...DEFAULT_EQUIPMENT.gym],
+    travel: [...DEFAULT_EQUIPMENT.travel],
+  },
+  daysPerWeek: 3,
+  durationMin: 45,
+  weekdays: ['Mon', 'Wed', 'Fri'],
+  restrictions: [],
+  discomfortNotes: '',
+  otherSports: '',
+  liked: [],
+  disliked: [],
+  pinned: [],
+  favourites: [],
+  onboarded: false,
+};
 
-export async function loadProfile(): Promise<UserProfile | null> {
-  const row = await db.keyval.get(PROFILE_KEY);
-  return (row?.value as UserProfile | undefined) ?? null;
+function cloneProfile(profile: UserProfile): UserProfile {
+  return {
+    ...profile,
+    equipment: {
+      home: [...(profile.equipment?.home ?? DEFAULT_EQUIPMENT.home)],
+      gym: [...(profile.equipment?.gym ?? DEFAULT_EQUIPMENT.gym)],
+      travel: [...(profile.equipment?.travel ?? DEFAULT_EQUIPMENT.travel)],
+    },
+    weekdays: [...(profile.weekdays ?? DEFAULT_PROFILE.weekdays)],
+    restrictions: [...(profile.restrictions ?? [])],
+    liked: [...(profile.liked ?? [])],
+    disliked: [...(profile.disliked ?? [])],
+    pinned: [...(profile.pinned ?? [])],
+    favourites: [...(profile.favourites ?? [])],
+  };
 }
 
-export async function saveProfile(profile: UserProfile): Promise<void> {
-  await db.keyval.put({ key: PROFILE_KEY, value: profile });
+export async function getUserProfile(): Promise<UserProfile> {
+  const profile = await db.profiles.toCollection().first();
+  if (!profile) {
+    return cloneProfile(DEFAULT_PROFILE);
+  }
+  return cloneProfile(profile);
 }
 
-export async function listPlans(): Promise<Plan[]> {
-  return db.plans.orderBy('createdAt').reverse().toArray();
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  const cleanProfile: UserProfile = {
+    ...cloneProfile(profile),
+    displayName: profile.displayName.trim() || DEFAULT_PROFILE.displayName,
+  };
+  await db.transaction('rw', db.profiles, async () => {
+    await db.profiles.clear();
+    await db.profiles.put(cleanProfile);
+  });
 }
 
-export async function putPlan(plan: Plan): Promise<void> {
+export async function savePlan(plan: Plan): Promise<void> {
   await db.plans.put(plan);
 }
 
-export async function deletePlan(id: string): Promise<void> {
-  await db.plans.delete(id);
+export async function getLatestPlan(): Promise<Plan | undefined> {
+  const latest = await db.plans.orderBy('createdAt').last();
+  if (latest) {
+    return latest;
+  }
+  const all = await db.plans.toArray();
+  if (all.length === 0) {
+    return undefined;
+  }
+  return all.sort((a, b) => b.createdAt - a.createdAt)[0];
 }
 
-export async function listSessions(): Promise<WorkoutSession[]> {
-  return db.sessions.orderBy('startedAt').reverse().toArray();
+export async function getAllPlans(): Promise<Plan[]> {
+  return db.plans.orderBy('createdAt').reverse().toArray();
 }
 
-export async function putSession(session: WorkoutSession): Promise<void> {
+export async function saveWorkoutSession(session: WorkoutSession): Promise<void> {
   await db.sessions.put(session);
 }
 
-export async function listFeedback(): Promise<ExerciseFeedback[]> {
-  return db.feedback.toArray();
+export async function getWorkoutSessions(limit?: number): Promise<WorkoutSession[]> {
+  const query = db.sessions.orderBy('startedAt').reverse();
+  if (typeof limit === 'number' && limit > 0) {
+    return query.limit(limit).toArray();
+  }
+  return query.toArray();
 }
 
-export async function putFeedback(fb: ExerciseFeedback): Promise<void> {
-  await db.feedback.put(fb);
+const ACTIVE_WORKOUT_KEY = 'active';
+
+export async function getActiveWorkout(): Promise<WorkoutSession | null> {
+  const record = (await db.activeWorkout.get(ACTIVE_WORKOUT_KEY)) ?? (await db.activeWorkout.toCollection().first());
+  return record ? record.session : null;
 }
 
-export async function clearUserData(): Promise<void> {
-  await db.transaction('rw', db.keyval, db.plans, db.sessions, db.feedback, async () => {
-    await db.keyval.delete(PROFILE_KEY);
-    await db.plans.clear();
-    await db.sessions.clear();
-    await db.feedback.clear();
+export async function saveActiveWorkout(session: WorkoutSession): Promise<void> {
+  await db.activeWorkout.put({
+    id: ACTIVE_WORKOUT_KEY,
+    session,
+    updatedAt: Date.now(),
   });
+}
+
+export async function clearActiveWorkout(): Promise<void> {
+  await db.activeWorkout.clear();
+}
+
+export async function toggleFavourite(exerciseId: string): Promise<boolean> {
+  const profile = await getUserProfile();
+  const currentFavourites = profile.favourites ?? [];
+  const exists = currentFavourites.includes(exerciseId);
+  const updatedFavourites = exists
+    ? currentFavourites.filter((id) => id !== exerciseId)
+    : [...currentFavourites, exerciseId];
+
+  profile.favourites = updatedFavourites;
+  await saveUserProfile(profile);
+  return !exists;
+}
+
+export async function toggleRestriction(exerciseId: string): Promise<boolean> {
+  const profile = await getUserProfile();
+  const currentRestrictions = profile.restrictions ?? [];
+  const exists = currentRestrictions.includes(exerciseId);
+  const updatedRestrictions = exists
+    ? currentRestrictions.filter((id) => id !== exerciseId)
+    : [...currentRestrictions, exerciseId];
+
+  profile.restrictions = updatedRestrictions;
+  await saveUserProfile(profile);
+  await recordFeedback({
+    exerciseId,
+    discomfort: !exists,
+    updatedAt: Date.now(),
+  });
+  return !exists;
+}
+
+export async function recordFeedback(feedback: ExerciseFeedback): Promise<void> {
+  const existing = await db.feedback.get(feedback.exerciseId);
+  const entry: ExerciseFeedback = {
+    exerciseId: feedback.exerciseId,
+    liked: feedback.liked !== undefined ? feedback.liked : existing?.liked,
+    discomfort: feedback.discomfort !== undefined ? feedback.discomfort : existing?.discomfort,
+    updatedAt: feedback.updatedAt || Date.now(),
+  };
+  await db.feedback.put(entry);
+}
+
+export async function getFeedback(exerciseId: string): Promise<ExerciseFeedback | undefined> {
+  return db.feedback.get(exerciseId);
+}
+
+export async function getAllFeedback(): Promise<ExerciseFeedback[]> {
+  return db.feedback.toArray();
 }
