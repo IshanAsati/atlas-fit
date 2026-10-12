@@ -20,6 +20,11 @@ account, backend, analytics, or paid API is required.
   comparison, kg/lb display, effort, discomfort feedback, rest timer, swaps,
   autosave, pause/resume, and completion summaries.
 
+The built-in catalogue includes backpack movements for home and travel:
+front squat, Romanian deadlift, bent-over row, floor press, and overhead press.
+The planner treats a loaded backpack as exact equipment, not as a generic
+bodyweight substitute.
+
 ## Develop
 
 ```bash

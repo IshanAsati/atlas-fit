@@ -18,6 +18,7 @@ export const EQUIPMENT: Equipment[] = [
   { id: 'dumbbells', label: 'Dumbbells', category: 'Home · Gym' },
   { id: 'adj-dumbbells', label: 'Adjustable dumbbells', category: 'Home' },
   { id: 'bands', label: 'Resistance bands / tubes', category: 'Home · Travel' },
+  { id: 'backpack', label: 'Loaded backpack', category: 'Home · Travel' },
   { id: 'kettlebell', label: 'Kettlebell', category: 'Home' },
   { id: 'pullup-bar', label: 'Pull-up bar', category: 'Home · Gym' },
   { id: 'ab-wheel', label: 'Ab wheel', category: 'Home' },
@@ -59,7 +60,7 @@ export const EQUIPMENT_BY_ID: Record<string, Equipment> = Object.fromEntries(
 
 /** Sensible editable defaults — never assume a gym has every machine. */
 export const DEFAULT_EQUIPMENT: Record<LocationType, string[]> = {
-  home: ['bodyweight', 'mat', 'chair', 'dumbbells', 'bands'],
+  home: ['bodyweight', 'mat', 'chair', 'dumbbells', 'bands', 'backpack'],
   gym: [
     'bench',
     'dumbbells',
@@ -74,7 +75,7 @@ export const DEFAULT_EQUIPMENT: Record<LocationType, string[]> = {
     'leg-extension',
     'leg-curl',
   ],
-  travel: ['bodyweight', 'bands'],
+  travel: ['bodyweight', 'bands', 'backpack'],
 };
 
 export function equipmentLabel(id: string): string {
