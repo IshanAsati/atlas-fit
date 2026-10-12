@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png', 'fonts/source-sans-3-latin-variable.woff2'],
+      includeAssets: ['icons/icon.svg', 'icons/apple-touch-icon.png', 'fonts/baloo-2-latin-variable.woff2', 'fonts/nunito-latin-variable.woff2', 'fonts/source-sans-3-latin-variable.woff2'],
       manifest: {
         name: 'Atlas Fit',
         short_name: 'Atlas',

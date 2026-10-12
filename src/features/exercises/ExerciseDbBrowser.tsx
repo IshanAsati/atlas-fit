@@ -4,6 +4,7 @@ import { searchExerciseDb, type ExerciseDbEntry, type ExerciseDbPage } from '../
 import { OFFLINE_MEDIA_CACHE } from '../../data/media';
 import { Modal } from '../../design/Modal';
 import { Icon } from '../../design/Icon';
+import { MirrorDemo } from './MirrorDemo';
 
 export function ExerciseDbBrowser() {
   const [query, setQuery] = useState('');
@@ -69,6 +70,7 @@ export function ExerciseDbBrowser() {
     <Modal open={Boolean(selected)} title={selected?.name ?? 'ExerciseDB exercise'} onClose={() => { if (!saving) { setSelected(null); setPlaying(false); } }}>{selected && <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <p className="small">ExerciseDB · not reviewed by Atlas Fit · personal use only</p>
       {selected.gifUrl && <><button className="btn ghost block" disabled={saving} onClick={() => setPlaying(!playing)}><Icon name="play" />{playing ? 'Stop demonstration' : 'Play 180p demonstration'}</button>{playing && <div className="exercise-picture large">{imageFailed ? <span className="media-unavailable">Demonstration unavailable. Use the written steps below.</span> : <img src={selected.gifUrl} alt={`${selected.name} exercise demonstration`} onError={() => setImageFailed(true)} />}</div>}</>}
+      {(!selected.gifUrl || imageFailed) && <MirrorDemo name={selected.name} />}
       <button className="btn primary block" disabled={saving} onClick={() => void save()}><Icon name="download" />{saving ? 'Saving…' : 'Save for offline browsing'}</button>
       {status && <p className="banner" role="status">{status}</p>}
       <section><h3 className="h-sec">Equipment reported by source</h3><p className="sub">{selected.equipments.join(', ') || 'Not specified'}. Setup may require additional equipment.</p></section>

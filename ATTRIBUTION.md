@@ -29,6 +29,20 @@ Documentation and usage restrictions: https://oss.exercisedb.dev/docs
 - ExerciseDB entries are browse-only: missing difficulty, unreviewed taxonomy, and coarse equipment descriptions are not treated as safe planner eligibility.
 - No profile, workout history, or session data is sent to the API. Search terms and normal network request metadata reach the service when the user searches or loads its media.
 
+## Optional third-party GIF mirror (online only, explicit use)
+
+A public Appwrite index (`atlas-fit/exercises`, read-only without login) can map
+exercise names to mirror GIFs hosted on a CDN. Setup and key rules:
+[`qa/APPWRITE.md`](qa/APPWRITE.md).
+
+- Redistribution rights for these GIFs are UNVERIFIED: the mirror repo
+  disclaims content ownership and its upstream source is gone. Treat every
+  mirror demo as an unreviewed suggestion, never as Atlas Fit media.
+- Mirror demos load only on an explicit tap and cache only on an explicit
+  save, into the same offline media store as bundled illustrations.
+- RepDB stays the offline default and the planner's only catalogue. Mirror
+  GIFs are never bulk-bundled into the APK and never enter backups.
+
 ## Open-source libraries
 
 Body typography: Nunito by Vernon Adams, self-hosted Latin variable WOFF2 from

@@ -137,7 +137,8 @@ with sync_playwright() as p:
     expect(end_image).not_to_have_js_property('naturalWidth', 0)
     assert end_image.evaluate('(img)=>img.complete && img.naturalWidth>0')
     page.evaluate('document.fonts.ready')
-    assert page.evaluate('document.fonts.check("700 20px \'Source Sans 3\'")'), 'Offline heading font unavailable'
+    assert page.evaluate('document.fonts.check("700 20px \'Baloo 2\'")'), 'Offline heading font unavailable'
+    assert page.evaluate('document.fonts.check("16px \'Nunito\'")'), 'Offline body font unavailable'
     page.get_by_text('Illustrations & form guidance', exact=True).click()
     page.get_by_role('button', name='Finish workout', exact=True).click()
     expect(page.get_by_role('dialog', name='Finish workout')).to_be_visible()

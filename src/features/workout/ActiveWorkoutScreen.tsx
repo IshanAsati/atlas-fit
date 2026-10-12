@@ -16,6 +16,7 @@ import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
 import { WorkoutTrainingTools, applySuggestedTarget, prependWarmups } from './WorkoutTrainingTools';
 import { PlateCalculator } from './PlateCalculator.tsx';
+import { MirrorDemo } from '../exercises/MirrorDemo';
 
 
 export interface ActiveWorkoutScreenProps {
@@ -372,6 +373,7 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
             {exercise && <div className="muscle-chips-row">{exercise.primary.map((muscle) => <span key={muscle}>{MUSCLE_BY_ID[muscle]?.short ?? muscle}</span>)}</div>}
           </div>
           <details className="workout-demonstration"><summary>Illustrations & form guidance</summary><ExerciseFigure exercise={exercise} />
+          {exercise && <MirrorDemo name={name} />}
           {exercise && <div className="workout-form-cues">
             <h3>How to do it</h3><ol>{exercise.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ol>
             <h3>Form cues</h3><ul>{exercise.cues.map((cue, index) => <li key={index}>{cue}</li>)}</ul>
