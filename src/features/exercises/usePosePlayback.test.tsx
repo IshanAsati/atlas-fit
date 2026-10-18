@@ -36,6 +36,23 @@ describe('usePosePlayback', () => {
     expect(result.current.isPlaying).toBe(false);
   });
 
+  it('stops while disabled and does not resume when re-enabled', () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(({ enabled }) => usePosePlayback(enabled, 'squat'), {
+      initialProps: { enabled: true },
+    });
+    act(() => result.current.togglePlayback());
+    expect(result.current.isPlaying).toBe(true);
+    rerender({ enabled: false });
+    expect(result.current.isPlaying).toBe(false);
+    act(() => vi.advanceTimersByTime(3000));
+    expect(result.current.pose).toBe('start');
+    rerender({ enabled: true });
+    expect(result.current.isPlaying).toBe(false);
+    act(() => vi.advanceTimersByTime(1400));
+    expect(result.current.pose).toBe('start');
+  });
+
   it('does not play when reduced motion is requested', () => {
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: true,
