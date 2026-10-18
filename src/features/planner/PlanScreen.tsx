@@ -236,7 +236,18 @@ export const PlanScreen: React.FC<PlanScreenProps> = ({ onStartSession, onSelect
   if (!profile || !draft || !plan) return <div className="view plan-screen"><h1 className="h-hero">Training plan</h1><p role="alert">{error || 'No training plan is available.'}</p><button type="button" className="btn primary" onClick={() => { setLoading(true); setError(''); void loadData(); }}>Retry loading plan</button></div>;
 
   return <div className="view plan-screen" aria-busy={busy}>
-    <header className="plan-page-header"><h1 className="h-hero">Training plan</h1><p className="sub">{plan.split} · {plan.days.length} days/week · {locationLabel(plan.location)}</p></header>
+    <header className="plan-current-card" aria-labelledby="current-plan-title">
+      <p className="plan-current-label">Current plan</p>
+      <div>
+        <h1 className="h-hero" id="current-plan-title">{plan.split}</h1>
+        <p className="sub">Built around your goal, available equipment, and schedule.</p>
+      </div>
+      <div className="plan-current-tags" role="group" aria-label="Plan details">
+        <span><strong>{plan.days.length}</strong> {plan.days.length === 1 ? 'workout' : 'workouts'} / week</span>
+        <span><strong>{profile.durationMin}</strong> min / session</span>
+        <span>{locationLabel(plan.location)} equipment</span>
+      </div>
+    </header>
     {error && <p className="plan-error" role="alert">{error}</p>}
     <p className="plan-status" role="status" aria-live="polite">{status || (busy ? 'Saving changes…' : '')}</p>
     {activeWorkout && <section className="panel plan-resume" aria-label="Workout in progress"><div><h2 className="h-sec">Workout in progress</h2><p>{activeWorkout.title}. Starting any workout will resume this session.</p></div><button type="button" className="btn primary" disabled={busy} onClick={() => void perform(() => startSession(() => activeWorkout))}>Resume workout</button></section>}
