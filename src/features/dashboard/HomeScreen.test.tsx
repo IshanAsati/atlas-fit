@@ -20,6 +20,9 @@ describe('Today', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'Today' })).toBeTruthy();
     expect(screen.getByText('Full body A')).toBeTruthy();
     expect(screen.getByText('No completed workouts yet')).toBeTruthy();
+    const weeklyGoal = screen.getByRole('progressbar', { name: 'Weekly training goal' });
+    expect(weeklyGoal.getAttribute('aria-valuenow')).toBe('0');
+    expect(weeklyGoal.getAttribute('aria-valuemax')).toBe(String(storage.DEFAULT_PROFILE.daysPerWeek));
     expect(screen.queryByText(/Recovery/)).toBeNull();
     expect(storage.saveActiveWorkout).not.toHaveBeenCalled();
   });
@@ -45,6 +48,7 @@ describe('Today', () => {
     vi.spyOn(storage,'getWorkoutSessions').mockResolvedValue([session]);
     render(<HomeScreen />);
     expect(await screen.findByText('1 working set logged this week.')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'Weekly training goal' }).getAttribute('aria-valuenow')).toBe('1');
   });
   it('resumes the real existing session', async () => {
     const session: WorkoutSession = { id: 'active', title: 'Existing session', location: 'home', state: 'active', startedAt: Date.now(), items: [] };

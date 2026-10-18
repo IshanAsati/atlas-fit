@@ -25,6 +25,9 @@ describe('OnboardingScreen', () => {
 
     expect(screen.getByText('Step 1 of 11')).toBeTruthy();
     expect(screen.getByText('Welcome to Atlas Fit')).toBeTruthy();
+    expect(screen.getByText('About you')).toBeTruthy();
+    expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('1');
+    expect(document.querySelectorAll('.onboarding-progress > span')).toHaveLength(5);
 
     const input = screen.getByLabelText(/Display Name/i) as HTMLInputElement;
     expect(input.value).toBe('Lifter');
@@ -62,12 +65,12 @@ describe('OnboardingScreen', () => {
     expect(screen.getByText('Step 1 of 11')).toBeTruthy();
   });
 
-  it('offers a bottom Back button and preserves answers when going back', () => {
+  it('keeps answers when using the header Back button', () => {
     render(<OnboardingScreen onComplete={vi.fn()} />);
     fireEvent.change(screen.getByLabelText(/Display Name/i), { target: { value: 'Alex' } });
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     fireEvent.click(screen.getByRole('button', { name: /Mobility & Functional/i }));
-    fireEvent.click(screen.getByRole('button', { name: 'Go back one step' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back to previous step' }));
     expect((screen.getByLabelText(/Display Name/i) as HTMLInputElement).value).toBe('Alex');
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
     expect(screen.getByRole('button', { name: /Mobility & Functional/i }).getAttribute('aria-pressed')).toBe('true');

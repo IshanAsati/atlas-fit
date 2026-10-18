@@ -14,6 +14,7 @@ import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
 import { generatePlan } from '../planner/engine';
 import * as db from '../../data/db';
+import './OnboardingScreen.css';
 
 export interface OnboardingScreenProps {
   onComplete: () => void;
@@ -157,6 +158,14 @@ const DURATION_OPTIONS: Array<{
 
 const ALL_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+const ONBOARDING_PHASES = [
+  { label: 'About you', first: 1, last: 3 },
+  { label: 'Training setup', first: 4, last: 5 },
+  { label: 'Schedule', first: 6, last: 8 },
+  { label: 'Preferences', first: 9, last: 10 },
+  { label: 'Your plan', first: 11, last: 11 },
+] as const;
+
 const COMMON_DISCOMFORT_AREAS = [
   { id: 'Overhead pressing', label: 'Overhead pressing', note: 'overhead press' },
   { id: 'Deep squats', label: 'Deep squats', note: 'squat' },
@@ -188,6 +197,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState<boolean>(true);
+  const currentPhase = ONBOARDING_PHASES.find((phase) => step >= phase.first && step <= phase.last) ?? ONBOARDING_PHASES[0];
 
   // Profile Form State
   const [displayName, setDisplayName] = useState<string>(
@@ -453,9 +463,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
   }, [currentProfile, generatedPlan, isSaving, onComplete]);
 
   return (
-    <div className="shell" style={{ minHeight: '100dvh', background: 'var(--bg)' }}>
+    <div className="shell onboarding-shell">
       {/* Sticky Progress Topbar */}
-      <header className="topbar">
+      <header className="topbar onboarding-header">
         <div className="row between" style={{ minHeight: 40, alignItems: 'center' }}>
           {step > 1 || onCancel ? (
             <button
@@ -481,25 +491,32 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               Atlas Fit
             </span>
           )}
-          <span className="small" style={{ fontWeight: 650, color: 'var(--text-2)' }}>
-            Step {step} of 11
-          </span>
+          <div className="onboarding-step-meta">
+            <span className="onboarding-phase-label">{currentPhase.label}</span>
+            <span className="small" style={{ fontWeight: 650, color: 'var(--text-2)' }}>Step {step} of 11</span>
+          </div>
         </div>
         <div
-          className="pbar"
-          style={{ marginTop: 8 }}
+          className="onboarding-progress"
           role="progressbar"
           aria-valuenow={step}
           aria-valuemin={1}
           aria-valuemax={11}
           aria-label={`Step ${step} of 11`}
+          aria-valuetext={`${currentPhase.label}, step ${step} of 11`}
         >
-          <div style={{ width: `${(step / 11) * 100}%` }} />
+          {ONBOARDING_PHASES.map((phase) => (
+            <span
+              key={phase.label}
+              className={step >= phase.first ? (step <= phase.last ? 'is-current' : 'is-complete') : ''}
+              aria-hidden="true"
+            />
+          ))}
         </div>
       </header>
 
       {/* Main Step Content */}
-      <main className="view" style={{ flex: 1, paddingBottom: 40 }}>
+      <main className="view onboarding-content">
         {/* ================= STEP 1: DISPLAY NAME ================= */}
         {step === 1 && (
           <div className="step-container">
@@ -1196,7 +1213,6 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
             </div>
           </div>
         )}
-        {step > 1 && <button type="button" className="btn ghost block" aria-label="Go back one step" disabled={isSaving} onClick={handleBack}><Icon name="back" size={18} /> Back</button>}
       </main>
     </div>
   );
