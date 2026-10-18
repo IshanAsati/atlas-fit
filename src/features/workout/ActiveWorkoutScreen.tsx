@@ -17,6 +17,7 @@ import { Icon } from '../../design/Icon';
 import { WorkoutTrainingTools, applySuggestedTarget, prependWarmups } from './WorkoutTrainingTools';
 import { PlateCalculator } from './PlateCalculator.tsx';
 import { MirrorDemo } from '../exercises/MirrorDemo';
+import { usePosePlayback } from '../exercises/usePosePlayback';
 
 
 export interface ActiveWorkoutScreenProps {
@@ -31,18 +32,26 @@ function WorkoutModal({ title, onClose, children }: { title: string; onClose: ()
 }
 
 function ExerciseFigure({ exercise }: { exercise: Exercise | undefined }) {
-  const [pose, setPose] = useState<'start' | 'peak'>('start');
+  const hasPosePair = Boolean(exercise && getExerciseImageUrl(exercise, 'start') &&
+    getExerciseImageUrl(exercise, 'peak') &&
+    getExerciseImageUrl(exercise, 'start') !== getExerciseImageUrl(exercise, 'peak'));
+  const { pose, selectPose, isPlaying, togglePlayback, reducedMotion } =
+    usePosePlayback(hasPosePair, exercise?.id);
   const [failedImages, setFailedImages] = useState<string[]>([]);
   const url = exercise ? getExerciseImageUrl(exercise, pose) : null;
   return <figure className="workout-figure">
     <div className="workout-pose-controls" aria-label="Exercise image position">
-      <button type="button" aria-pressed={pose === 'start'} onClick={() => setPose('start')}>Start position</button>
-      <button type="button" aria-pressed={pose === 'peak'} onClick={() => setPose('peak')}>End position</button>
+      <button type="button" aria-pressed={pose === 'start'} onClick={() => selectPose('start')}>Start position</button>
+      <button type="button" aria-pressed={pose === 'peak'} onClick={() => selectPose('peak')}>End position</button>
+      {hasPosePair && <button type="button" aria-pressed={isPlaying} disabled={reducedMotion}
+        onClick={togglePlayback}>{isPlaying ? 'Pause preview' : 'Play pose preview'}</button>}
     </div>
     {url && !failedImages.includes(url)
       ? <img src={url} alt={`${exercise?.name}, ${pose === 'start' ? 'start' : 'end'} position`} onError={() => setFailedImages((old) => [...old, url])} />
       : <div className="workout-image-fallback"><strong>Illustration unavailable</strong><span>{url ? 'This image could not load. Use the written form cues below.' : 'No illustration is available for this exercise. Use the written form cues below.'}</span></div>}
-    <figcaption>{pose === 'start' ? 'Start position' : 'End position'} · Reference illustration, not a form assessment.</figcaption>
+    <figcaption>{pose === 'start' ? 'Start position' : 'End position'} · {isPlaying
+      ? 'Two-pose reference loop, not a full movement video.'
+      : 'Reference illustration, not a form assessment.'}</figcaption>
   </figure>;
 }
 
