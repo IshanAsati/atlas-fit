@@ -688,7 +688,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
         {step === 5 && (
           <div className="step-container">
             <div>
-              <h1 className="h-hero">Equipment Inventory</h1>
+              <h1 className="h-hero">Select your equipment</h1>
               <p className="sub">
                 Atlas Fit only programs exercises for gear you actually have available.
               </p>
@@ -759,15 +759,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
             {/* Equipment Chips Grid */}
             <div
-              className="chips"
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--hairline)',
-                borderRadius: 'var(--radius)',
-                padding: 12,
-                maxHeight: '38dvh',
-                overflowY: 'auto',
-              }}
+              className="equipment-list"
+              style={{ maxHeight: '42dvh', overflowY: 'auto' }}
             >
               {filteredEquipment.length === 0 ? (
                 <p className="small" style={{ margin: '8px 0', textAlign: 'center', width: '100%' }}>
@@ -780,19 +773,13 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                     <button
                       key={eq.id}
                       type="button"
-                      className="chip"
+                      className="equipment-choice"
                       aria-pressed={isSelected}
-                      style={{
-                        minHeight: 44,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        fontSize: 13.5,
-                      }}
                       onClick={() => handleToggleEquipment(equipmentTab, eq.id)}
                     >
-                      <span style={{ fontSize: 14, fontWeight: 700 }}>{isSelected ? '✓' : '+'}</span>
-                      <span>{eq.label}</span>
+                      <span className="equipment-choice-icon"><Icon name="exercise" size={22} /></span>
+                      <span className="equipment-choice-label">{eq.label}</span>
+                      <span className="equipment-choice-switch" aria-hidden="true"><span /></span>
                     </button>
                   );
                 })

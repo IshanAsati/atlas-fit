@@ -27,8 +27,9 @@ function readRoute(): { tab: AppTab; exerciseId: string | null } {
 }
 const routeNames: Record<AppTab,string> = { home: 'today', plan: 'plan', workout: 'workout', exercises: 'library', muscles: 'progress', data: 'settings', cardio: 'cardio', nutrition: 'diet' };
 const tabs: { tab: AppTab; label: string; icon: IconName }[] = [
-  { tab: 'home', label: 'Today', icon: 'home' }, { tab: 'plan', label: 'Plan', icon: 'plan' },
-  { tab: 'exercises', label: 'Library', icon: 'library' }, { tab: 'muscles', label: 'Progress', icon: 'progress' },
+  { tab: 'home', label: 'Workout', icon: 'exercise' }, { tab: 'exercises', label: 'Exercises', icon: 'library' },
+  { tab: 'plan', label: 'Plan', icon: 'plan' }, { tab: 'muscles', label: 'Progress', icon: 'progress' },
+  { tab: 'data', label: 'Settings', icon: 'settings' },
 ];
 
 export function App() {

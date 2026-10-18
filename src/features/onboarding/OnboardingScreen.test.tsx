@@ -112,7 +112,7 @@ describe('OnboardingScreen', () => {
 
     // Step 5: Equipment Inventory
     expect(screen.getByText('Step 5 of 11')).toBeTruthy();
-    expect(screen.getByText('Equipment Inventory')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Select your equipment' })).toBeTruthy();
 
     // Switch between Home and Gym tabs
     const gymTab = screen.getByRole('tab', { name: /Gym Gear/i });

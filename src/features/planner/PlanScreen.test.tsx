@@ -86,6 +86,7 @@ describe('PlanScreen schedule and reusable routines', () => {
     expect(screen.getByRole('group', { name: 'Plan details' }).textContent).toContain('2 workouts / week');
     expect(screen.getByRole('group', { name: 'Plan details' }).textContent).toContain('45 min / session');
     expect(screen.getByRole('group', { name: 'Plan details' }).textContent).toContain('Home equipment');
+    expect(screen.getByText('2 exercises', { exact: true })).toBeDefined();
     const calendar = screen.getByRole('list', { name: 'Preferred weekly schedule' });
     expect(within(calendar).getAllByRole('listitem')).toHaveLength(7);
     expect(within(calendar).getByRole('link', { name: 'Mon: Workout A' }).getAttribute('href')).toBe('#plan-day-stable-a');

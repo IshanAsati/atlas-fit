@@ -1,13 +1,13 @@
 .bodygraph-container, .bodygraph-screen {
   color-scheme: inherit;
-  --muscle-primary: #E86672;
-  --muscle-secondary: #A88BDA;
-  --muscle-neutral: #DADFD5;
-  --muscle-activity-low: #C0CDAA;
-  --muscle-activity-mid: #8EA976;
-  --muscle-activity-high: #54794B;
-  --bodygraph-seam: #F3F5ED;
-  --bodygraph-outline: #BAC6B5;
+  --muscle-primary: #ffdf00;
+  --muscle-secondary: #8eb7dd;
+  --muscle-neutral: #b9c4d1;
+  --muscle-activity-low: #8eb7dd;
+  --muscle-activity-mid: #54738f;
+  --muscle-activity-high: #ffdf00;
+  --bodygraph-seam: #25313e;
+  --bodygraph-outline: #7b8da2;
   --graph-ink: var(--text);
   --graph-paper: var(--bg);
   --graph-lime: var(--action);
@@ -83,7 +83,7 @@
 .bodygraph-container, .bodygraph-screen { accent-color: var(--focus); caret-color: var(--text); scrollbar-color: var(--graph-muted) var(--graph-paper); }
 @media (max-width: 360px) { .bodygraph-flipper { width: 168px; height: 280px; } }
 
-/* Inspector shares the application's matte forest surface. */
+/* Inspector shares the application's slate surface. */
 .muscle-drawer { background: var(--bg-raised); color: var(--text); padding: 20px; }
 .muscle-drawer-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .muscle-drawer h2 { margin: 0; font-size: 23px; }

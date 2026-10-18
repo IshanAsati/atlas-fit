@@ -24,14 +24,15 @@ export function resolveTheme(preference: ThemePreference): ResolvedTheme {
   return 'light';
 }
 
-/** Reads the stored preference. Corrupt values, denied storage, or a missing window all mean 'system'. */
+/** Defaults to the Atlas slate theme; an explicit 'system' choice remains available in Settings. */
 export function getStoredThemePreference(): ThemePreference {
   try {
     if (typeof window !== 'undefined') {
       const stored = window.localStorage.getItem(STORAGE_KEY);
       if (isThemePreference(stored)) return stored;
+      if (stored === null) return 'dark';
     }
-  } catch { /* storage unavailable or unreadable → system */ }
+  } catch { /* storage unavailable: use the reference-matched slate theme */ }
   return 'system';
 }
 

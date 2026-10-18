@@ -57,6 +57,8 @@
 .plan-day { padding: 0; overflow: hidden; scroll-margin-top: 72px; }
 .plan-day-header { padding: 20px; background: var(--surface-2); border-radius: 20px 20px 0 0; }
 .plan-day-header .btn { flex-shrink: 0; }
+.plan-day-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.plan-day-meta > span { padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 650; }
 .plan-exercises { margin: 0; padding: 0; list-style: none; }
 .plan-exercise { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--hairline); background: var(--surface); }
 .plan-exercise-summary { min-width: 0; flex: 1; }

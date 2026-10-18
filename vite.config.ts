@@ -15,8 +15,8 @@ export default defineConfig({
         short_name: 'Atlas',
         description:
           'Offline-first personal strength training: adaptable plans, set logging, and a cartoon muscle map.',
-        theme_color: '#dad7de',
-        background_color: '#dad7de',
+        theme_color: '#25313e',
+        background_color: '#25313e',
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',

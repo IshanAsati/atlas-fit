@@ -38,8 +38,8 @@ describe('theme preference', () => {
   });
   afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-  it('defaults to system when nothing is stored', () => {
-    expect(getStoredThemePreference()).toBe('system');
+  it('defaults to the slate theme when nothing is stored', () => {
+    expect(getStoredThemePreference()).toBe('dark');
   });
 
   it('persists an explicit preference and reads it back', () => {
@@ -101,7 +101,7 @@ describe('theme preference', () => {
 
   it('exposes and applies a preference through the hook', () => {
     const { result } = renderHook(() => useThemePreference());
-    expect(result.current[0]).toBe('system');
+    expect(result.current[0]).toBe('dark');
     act(() => { result.current[1]('dark'); });
     expect(result.current[0]).toBe('dark');
     expect(window.localStorage.getItem(STORAGE_KEY)).toBe('dark');
@@ -109,6 +109,7 @@ describe('theme preference', () => {
   });
 
   it('follows device scheme changes only while set to system', () => {
+    setThemePreference('system');
     const { result } = renderHook(() => useThemePreference());
     act(() => { scheme.setDark(true); });
     expect(document.documentElement.dataset.theme).toBe('dark');
@@ -120,6 +121,7 @@ describe('theme preference', () => {
   });
 
   it('subscribes to matchMedia only while set to system', () => {
+    setThemePreference('system');
     const { unmount } = renderHook(() => useThemePreference());
     expect(scheme.subscriberCount).toBe(1);
     unmount();
