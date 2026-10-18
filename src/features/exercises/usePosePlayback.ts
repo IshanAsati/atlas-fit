@@ -4,8 +4,8 @@ export type ExercisePose = 'start' | 'peak';
 
 /**
  * Play a two-frame reference preview using the exercise's bundled pose images.
- * This is not a movement video: stop on manual selection, tab backgrounding,
- * exercise changes, and whenever the user requests reduced motion.
+ * This is not a movement video: stop on manual selection, sheet close, tab
+ * backgrounding, exercise changes, and whenever the user requests reduced motion.
  */
 export function usePosePlayback(enabled: boolean, exerciseId?: string) {
   const [pose, setPose] = useState<ExercisePose>('start');
@@ -30,6 +30,10 @@ export function usePosePlayback(enabled: boolean, exerciseId?: string) {
     setPose('start');
     setIsPlaying(false);
   }, [exerciseId]);
+
+  useEffect(() => {
+    if (!enabled) setIsPlaying(false);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || !isPlaying || reducedMotion) return;
