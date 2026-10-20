@@ -63,9 +63,10 @@ export function normalizeExerciseName(name: string): string {
 }
 
 /**
- * Exact normalized-name match of a RepDB exercise to the mirror index.
- * Full-text search is only used to find candidates; a similarly named
- * movement is rejected so the app never displays the wrong demonstration.
+ * Exact-name match of a RepDB exercise to the mirror index.
+ * Full-text search is only used as a compatibility fallback for punctuation
+ * differences; a similarly named movement is rejected so the app never
+ * displays the wrong demonstration.
  */
 export async function findMirrorGif(name: string, signal?: AbortSignal): Promise<MirrorGif | null> {
   const query = normalizeExerciseName(name);
@@ -74,13 +75,29 @@ export async function findMirrorGif(name: string, signal?: AbortSignal): Promise
   if (cached) return cached;
   const lookup = (async () => {
     try {
-      const queries = new URLSearchParams();
-      queries.append('queries[]', JSON.stringify({ method: 'search', attribute: 'name', values: [query] }));
-      queries.append('queries[]', JSON.stringify({ method: 'limit', values: [3] }));
-      const page = await getJson(`${baseUrl()}?${queries}`, signal);
-      const docs = (page as { documents?: unknown[] } | null)?.documents;
-      if (!Array.isArray(docs)) return null;
-      for (const doc of docs) {
+      const exactQueries = new URLSearchParams();
+      exactQueries.append('queries[]', JSON.stringify({ method: 'equal', attribute: 'name', values: [name.trim().toLowerCase()] }));
+      exactQueries.append('queries[]', JSON.stringify({ method: 'limit', values: [1] }));
+      const exactPage = await getJson(`${baseUrl()}?${exactQueries}`, signal);
+      const exactDocs = (exactPage as { documents?: unknown[] } | null)?.documents;
+      if (Array.isArray(exactDocs)) {
+        for (const doc of exactDocs) {
+          if (validGif(doc) && normalizeExerciseName(doc.name) === query) {
+            return { exId: doc.exId, name: doc.name, gifUrl: doc.gifUrl };
+          }
+        }
+      }
+
+      // A few source names differ only by punctuation (for example, slash vs
+      // space). Search more than the first fuzzy hits, then keep exact
+      // normalized matches only.
+      const searchQueries = new URLSearchParams();
+      searchQueries.append('queries[]', JSON.stringify({ method: 'search', attribute: 'name', values: [query] }));
+      searchQueries.append('queries[]', JSON.stringify({ method: 'limit', values: [100] }));
+      const searchPage = await getJson(`${baseUrl()}?${searchQueries}`, signal);
+      const searchDocs = (searchPage as { documents?: unknown[] } | null)?.documents;
+      if (!Array.isArray(searchDocs)) return null;
+      for (const doc of searchDocs) {
         if (validGif(doc) && normalizeExerciseName(doc.name) === query) {
           return { exId: doc.exId, name: doc.name, gifUrl: doc.gifUrl };
         }
