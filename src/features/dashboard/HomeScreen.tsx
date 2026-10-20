@@ -87,7 +87,8 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
     <header className="topbar today-header"><div><h1>Today</h1><p>{profile ? goalLabels[profile.goal] : 'Your training'} · {profile?.daysPerWeek ?? 3} days/week</p></div><button type="button" className="icon-btn" aria-label="Open settings" onClick={() => go('data')}><Icon name="settings" /></button></header>
     <main className="view">
        <section className="today-workout" aria-label="Next scheduled workout">
-        <div className="row between"><span className="small">{location ? locationLabels[location] : 'Your training'}</span>{(active || !nextDay) && <span className="small">{active ? 'Workout in progress' : plan ? 'Week complete' : 'Your first workout'}</span>}</div>
+        <div className="today-kicker"><span>{active ? 'Continue training' : 'Next up'}</span><span>{location ? locationLabels[location] : 'Your training'}</span></div>
+        {(active || !nextDay) && <p className="small today-status">{active ? 'Workout in progress' : plan ? 'Week complete' : 'Your first workout'}</p>}
         <h2 className="today-title">{active?.title ?? nextDay?.label ?? (plan ? 'Your week is complete' : 'Ready for your first workout?')}</h2>
         <p className="sub">{active ? 'Pick up where you left off. Your sets are saved.' : nextDay?.focus ?? (plan ? 'Take a rest day, or open your plan to repeat a workout.' : 'Open your plan to choose a workout for your time and equipment.')}</p>
         {profile?.trainingBlock?.enabled && <p className="small">{active?.blockContext
@@ -104,6 +105,10 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
         {previewItems.length > 0 && <button className="btn ghost block small-btn" disabled={downloading} onClick={() => void download()}><Icon name="download" size={17} />{downloading ? 'Saving images…' : 'Save offline images'}</button>}
         {mediaStatus && <p className="small" role="status">{mediaStatus}</p>}
         {previewItems.length > 0 && <button className="today-adjust" onClick={() => go('plan')}>Adjust workout <Icon name="arrow" size={16} /></button>}
+        <div className="today-quick-actions" aria-label="Workout shortcuts">
+          <button type="button" className="quick-action" onClick={() => go('plan')}><Icon name="plan" size={18} /><span><strong>Plan</strong><small>Shape your week</small></span></button>
+          <button type="button" className="quick-action" onClick={() => go('exercises')}><Icon name="library" size={18} /><span><strong>Library</strong><small>Find a movement</small></span></button>
+        </div>
       </section>
       <HealthSummary />
       <section className="today-destinations" aria-label="Cardio and nutrition">

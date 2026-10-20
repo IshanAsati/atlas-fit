@@ -42,7 +42,12 @@ describe('Mirror GIF index client', () => {
     vi.stubGlobal('fetch', fetcher);
     const result = await findMirrorGif('3/4 Sit-Up');
     expect(result?.exId).toBe('0001');
-    expect(fetcher.mock.calls[0][0]).toContain('/documents?queries=');
+    const url = new URL(fetcher.mock.calls[0][0]);
+    expect(url.searchParams.has('queries')).toBe(false);
+    expect(url.searchParams.getAll('queries[]').map((query) => JSON.parse(query))).toEqual([
+      { method: 'search', attribute: 'name', values: ['3 4 sit up'] },
+      { method: 'limit', values: [3] },
+    ]);
   });
 
   it('returns null offline, on HTTP errors, or invalid payloads', async () => {

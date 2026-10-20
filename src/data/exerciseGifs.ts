@@ -7,13 +7,15 @@
  * read APPWRITE_API_KEY from the environment and must never be committed).
  *
  * The index mirrors third-party GIFs (see ATTRIBUTION.md): redistribution
- * rights are unverified, so GIFs are an explicit online enhancement only.
- * Bundled RepDB illustrations remain the offline default and are never replaced.
+ * rights are unverified, so GIFs are an explicit online visual enhancement.
+ * RepDB remains authoritative for exercise data, instructions, and taxonomy.
  */
 export const APPWRITE_ENDPOINT = 'https://cloud.appwrite.io/v1';
 export const APPWRITE_PROJECT_ID = '6acd1fed003d66ca7fb5';
 export const GIF_DATABASE_ID = 'atlas-fit';
 export const GIF_COLLECTION_ID = 'exercises';
+
+const lookupCache = new Map<string, Promise<MirrorGif | null>>();
 
 export interface MirrorGif {
   /** Legacy ExerciseDB numeric id, e.g. "0001". */
@@ -61,21 +63,35 @@ export function normalizeExerciseName(name: string): string {
 }
 
 /**
- * Best-effort match of a catalogue exercise name to the mirror index.
- * Returns the first fulltext hit or null — callers must label it as an
- * unverified third-party match, never as reviewed Atlas Fit media.
+ * Exact normalized-name match of a RepDB exercise to the mirror index.
+ * Full-text search is only used to find candidates; a similarly named
+ * movement is rejected so the app never displays the wrong demonstration.
  */
 export async function findMirrorGif(name: string, signal?: AbortSignal): Promise<MirrorGif | null> {
   const query = normalizeExerciseName(name);
   if (!query) return null;
-  try {
-    const queries = encodeURIComponent(JSON.stringify([`search("name", ${JSON.stringify(query)})`, 'limit(3)']));
-    const page = await getJson(`${baseUrl()}?queries=${queries}`, signal);
-    const docs = (page as { documents?: unknown[] } | null)?.documents;
-    if (!Array.isArray(docs)) return null;
-    for (const doc of docs) {
-      if (validGif(doc)) return { exId: doc.exId, name: doc.name, gifUrl: doc.gifUrl };
-    }
-    return null;
-  } catch { return null; }
+  const cached = lookupCache.get(query);
+  if (cached) return cached;
+  const lookup = (async () => {
+    try {
+      const queries = new URLSearchParams();
+      queries.append('queries[]', JSON.stringify({ method: 'search', attribute: 'name', values: [query] }));
+      queries.append('queries[]', JSON.stringify({ method: 'limit', values: [3] }));
+      const page = await getJson(`${baseUrl()}?${queries}`, signal);
+      const docs = (page as { documents?: unknown[] } | null)?.documents;
+      if (!Array.isArray(docs)) return null;
+      for (const doc of docs) {
+        if (validGif(doc) && normalizeExerciseName(doc.name) === query) {
+          return { exId: doc.exId, name: doc.name, gifUrl: doc.gifUrl };
+        }
+      }
+      return null;
+    } catch { return null; }
+  })();
+  const stableLookup = lookup.then((result) => {
+    if (!result) lookupCache.delete(query);
+    return result;
+  });
+  lookupCache.set(query, stableLookup);
+  return stableLookup;
 }

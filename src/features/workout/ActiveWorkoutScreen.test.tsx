@@ -212,7 +212,7 @@ describe('ActiveWorkoutScreen', () => {
     fireEvent.click(screen.getByText('End position'));
     fireEvent.error(screen.getByAltText('Push-up, end position'));
     expect(screen.getByText('Illustration unavailable')).toBeDefined();
-    expect(screen.getByText(/This image could not load/)).toBeDefined();
+    expect(screen.getByText(/Follow the written instructions below/)).toBeDefined();
     fireEvent.click(screen.getByText('Start position'));
     expect(screen.getByAltText('Push-up, start position')).toBeDefined();
   });

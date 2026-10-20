@@ -33,6 +33,19 @@ Invoke-RestMethod 'https://cloud.appwrite.io/v1/databases/atlas-fit/collections/
   -Headers @{ 'X-Appwrite-Project'='6acd1fed003d66ca7fb5' }
 ```
 
+## Import with the current TablesDB API
+
+`scripts/seed-exercise-catalog.mjs` writes through
+`/tablesdb/atlas-fit/tables/exercises/rows` and requires `rows.write`.
+The existing `atlas-fit/exercises` collection is the same underlying resource
+as the TablesDB table; there is no need to create another database or duplicate
+the catalogue. The older provisioning script above still uses the legacy
+collection/attribute API.
+
+The public client can continue reading the existing document endpoint.
+Search requests must send separate `queries[]` parameters containing JSON
+query objects, rather than one `queries` parameter containing an array.
+
 ## Rules
 
 - Secrets never enter git, chat logs aside — rotate any key pasted anywhere.
