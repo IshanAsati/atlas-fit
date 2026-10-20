@@ -4,6 +4,9 @@
 .today-header p { font-size: 14px; line-height: 1.5; margin-top: 3px; }
 .today-workout { display: flex; flex-direction: column; gap: 10px; background: var(--surface); padding: 20px; border-radius: 28px; border: 0; box-shadow: 0 12px 30px rgb(42 35 64 / .07); }
 .today-workout > p { margin: 0; }
+.today-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--action-text); font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.today-kicker > span:last-child { color: var(--text-2); font-size: 14px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.today-status { margin-top: -4px !important; }
 .today-workout .h-sec { font-size: 20px; font-weight: 650; color: var(--text); }
 .today-title { margin: 3px 0 0; font-size: 30px; line-height: 1.12; letter-spacing: -.02em; }
 .today-preview { display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; margin: 4px 0 6px; }
@@ -11,6 +14,23 @@
 .preview-exercise .exercise-picture { width: 48px; height: 48px; }
 .preview-exercise > span { display: block; min-width: 0; font-size: 16px; line-height: 1.4; overflow-wrap: anywhere; }
 .today-adjust { color: var(--action-text); font-size: 16px; display: flex; gap: 8px; align-items: center; justify-content: center; padding: 8px 0; min-height: 48px; background: none; border: 0; }
+.today-quick-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding-top: 2px; border-top: 1px solid var(--hairline); }
+.quick-action { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 12px 4px 2px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.quick-action > svg { color: var(--action-text); }
+.quick-action span { display: grid; gap: 1px; min-width: 0; }
+.quick-action strong { font-size: 14px; }
+.quick-action small { color: var(--text-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.weekly-goal-card { display: grid; gap: 18px; padding: 20px; border-radius: 24px; background: var(--surface); box-shadow: 0 8px 24px rgb(31 25 45 / .045); }
+.weekly-goal-summary { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+.weekly-goal-summary > div:first-child { display: grid; gap: 5px; min-width: 0; }
+.weekly-goal-summary .eyebrow { margin: 0; color: var(--action-text); font-size: 13px; font-weight: 750; }
+.weekly-goal-summary .h-sec { font-size: 22px; }
+.weekly-goal-summary .small { margin: 0; }
+.weekly-goal-ring { width: 88px; height: 88px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; }
+.weekly-goal-ring::before { content: ''; position: absolute; width: 72px; height: 72px; border-radius: 50%; background: var(--surface); }
+.weekly-goal-ring { position: relative; }
+.weekly-goal-ring > span { position: relative; display: flex; align-items: baseline; color: var(--text); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.weekly-goal-ring small { color: var(--text-2); font-size: 13px; font-weight: 650; }
 .strip .cell { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 7px 0; border-radius: 13px; }
 .strip .cell strong { font-size: 16px; }
 .strip .cell.today { border-color: var(--focus); }
@@ -29,4 +49,8 @@
   .today-workout { padding: 18px 16px; }
   .today-activity { gap: 16px; }
   .today-activity > .bodyfig { width: 80px; }
+  .weekly-goal-card { padding: 16px; }
+  .weekly-goal-summary { gap: 12px; }
+  .weekly-goal-ring { width: 76px; height: 76px; }
+  .weekly-goal-ring::before { width: 62px; height: 62px; }
 }

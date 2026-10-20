@@ -3,7 +3,8 @@ import type { Exercise, MuscleId, UserProfile, WorkoutSession, SessionItem } fro
 import { MUSCLE_BY_ID } from '../../data/muscles';
 import { equipmentLabel, DEFAULT_EQUIPMENT } from '../../data/equipment';
 import { MOVEMENT_LABELS } from '../../data/movements';
-import { findSubstitutes } from '../../data/catalog';
+import { findSubstitutes, getExerciseImageUrl } from '../../data/catalog';
+import { usePosePlayback } from './usePosePlayback';
 import { avoidsEquipment } from '../planner/validator';
 import {
   getUserProfile,
@@ -45,7 +46,9 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
   onSubstitute,
   allowAddToActiveWorkout = true,
 }) => {
-  const [pose, setPose] = useState<'start' | 'peak'>('start');
+  const hasPosePair = exercise ? Boolean(getExerciseImageUrl(exercise, 'start') && getExerciseImageUrl(exercise, 'peak') && getExerciseImageUrl(exercise, 'start') !== getExerciseImageUrl(exercise, 'peak')) : false;
+  const { pose, selectPose, isPlaying, togglePlayback, reducedMotion } = usePosePlayback(isOpen && hasPosePair, exercise?.id);
+  const [mirrorAvailable, setMirrorAvailable] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(initialProfile ?? null);
   const [isFav, setIsFav] = useState(false);
   const [isAvoided, setIsAvoided] = useState(false);
@@ -65,11 +68,11 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  // Reset pose and image error on exercise change
+  // Reset action notices when viewing another exercise
   useEffect(() => {
-    setPose('start');
     setActionSuccessNotice(null);
     setActionError(null);
+    setMirrorAvailable(false);
   }, [exercise?.id]);
 
   // Sync profile & active session from DB
@@ -271,7 +274,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
         )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* High-res RepDB Illustration with Start / Peak Pose Toggle (§4.5) */}
+          {/* Appwrite GIF when available; RepDB illustration and pose controls as fallback. */}
           <div className="detail-media-card">
             <div className="detail-pose-toggle" role="tablist" aria-label="Pose illustration selector">
               <button
@@ -279,7 +282,7 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                 role="tab"
                 aria-selected={pose === 'start'}
                 className={`detail-pose-btn ${pose === 'start' ? 'active' : ''}`}
-                onClick={() => setPose('start')}
+                onClick={() => selectPose('start')}
               >
                 1. Start Pose
               </button>
@@ -288,13 +291,28 @@ export const ExerciseDetailSheet: React.FC<ExerciseDetailSheetProps> = ({
                 role="tab"
                 aria-selected={pose === 'peak'}
                 className={`detail-pose-btn ${pose === 'peak' ? 'active' : ''}`}
-                onClick={() => setPose('peak')}
+                onClick={() => selectPose('peak')}
               >
                 2. Peak Pose
               </button>
             </div>
 
-            <ExercisePicture exercise={exercise} pose={pose} large />
+            {!mirrorAvailable && hasPosePair && (
+              <div style={{ display: 'grid', gap: 6, padding: '8px 12px' }}>
+                <button type="button" className="btn ghost small-btn" aria-pressed={isPlaying}
+                  disabled={reducedMotion} onClick={togglePlayback}>
+                  <Icon name={isPlaying ? 'pause' : 'play'} size={16} />
+                  {isPlaying ? 'Pause two-pose preview' : 'Play two-pose preview'}
+                </button>
+                <span className="small">{reducedMotion
+                  ? 'Motion preview is off because reduced motion is enabled.'
+                  : 'Alternates between two reference positions; not a full exercise video.'}</span>
+              </div>
+            )}
+            <ExercisePicture exercise={exercise} pose={pose} large onMirrorStatus={(status) => {
+              if (status === 'available') setMirrorAvailable(true);
+              if (status !== 'available') setMirrorAvailable(false);
+            }} />
           </div>
 
           {/* Quick Action Buttons Bar */}

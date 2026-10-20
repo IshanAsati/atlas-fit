@@ -36,13 +36,32 @@ describe('Mirror GIF index client', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
-  it('returns the first valid fulltext hit for a name search', async () => {
+  it('prefers the exact indexed name before fuzzy search', async () => {
     const fetcher = vi.fn().mockResolvedValue({ ok: true,
-      json: async () => ({ documents: [{ ...doc(), gifUrl: 'http://insecure.example/x.gif' }, doc()] }) });
+      json: async () => ({ documents: [{ ...doc({ name: '3/4 sit-up exact' }), gifUrl: 'http://insecure.example/x.gif' }, doc({ name: '3/4 sit-up exact' })] }) });
     vi.stubGlobal('fetch', fetcher);
-    const result = await findMirrorGif('3/4 Sit-Up');
+    const result = await findMirrorGif('3/4 Sit-Up Exact');
     expect(result?.exId).toBe('0001');
-    expect(fetcher.mock.calls[0][0]).toContain('/documents?queries=');
+    const url = new URL(fetcher.mock.calls[0][0]);
+    expect(url.searchParams.has('queries')).toBe(false);
+    expect(url.searchParams.getAll('queries[]').map((query) => JSON.parse(query))).toEqual([
+      { method: 'equal', attribute: 'name', values: ['3/4 sit-up exact'] },
+      { method: 'limit', values: [1] },
+    ]);
+  });
+
+  it('uses a larger fulltext window only when exact punctuation differs', async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ documents: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ documents: [doc({ name: '3/4 sit-up fallback' })] }) });
+    vi.stubGlobal('fetch', fetcher);
+    const result = await findMirrorGif('3 4 Sit Up Fallback');
+    expect(result?.exId).toBe('0001');
+    const fallbackUrl = new URL(fetcher.mock.calls[1][0]);
+    expect(fallbackUrl.searchParams.getAll('queries[]').map((query) => JSON.parse(query))).toEqual([
+      { method: 'search', attribute: 'name', values: ['3 4 sit up fallback'] },
+      { method: 'limit', values: [100] },
+    ]);
   });
 
   it('returns null offline, on HTTP errors, or invalid payloads', async () => {

@@ -18,8 +18,14 @@
 .plan-screen fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
 .plan-screen legend { margin-bottom: 8px; font-size: 16px; font-weight: 600; }
 .plan-screen summary { min-height: 48px; cursor: pointer; font-weight: 650; align-content: center; }
-.plan-page-header { display: grid; gap: 5px; padding-top: 3px; }
-.plan-page-header .h-hero { margin: 0; }
+.plan-current-card { display: grid; gap: 14px; padding: 22px; border-radius: 24px; background: var(--surface); box-shadow: 0 8px 24px rgb(31 25 45 / .045); border-inline-start: 4px solid var(--action); }
+.plan-current-label { color: var(--action-text); font-size: 13px; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.plan-current-card .h-hero { margin: 0; font-size: clamp(28px, 6vw, 36px); }
+.plan-current-card .sub { max-width: 42ch; margin-top: 6px; font-size: 15px; }
+.plan-current-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.plan-current-tags > span { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 7px 12px; border-radius: 999px; background: var(--surface-2); color: var(--text-2); font-size: 13px; font-weight: 650; }
+.plan-current-tags strong { color: var(--text); }
+@media (max-width: 600px) { .plan-current-card { padding: 18px; } }
 .plan-status:empty { display: none; }
 .plan-status { font-size: .875rem; color: var(--text-2); }
 .plan-error { color: var(--danger, #9a332c); font-size: .875rem; }
@@ -51,6 +57,8 @@
 .plan-day { padding: 0; overflow: hidden; scroll-margin-top: 72px; }
 .plan-day-header { padding: 20px; background: var(--surface-2); border-radius: 20px 20px 0 0; }
 .plan-day-header .btn { flex-shrink: 0; }
+.plan-day-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.plan-day-meta > span { padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--text-2); font-size: 13px; font-weight: 650; }
 .plan-exercises { margin: 0; padding: 0; list-style: none; }
 .plan-exercise { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--hairline); background: var(--surface); }
 .plan-exercise-summary { min-width: 0; flex: 1; }

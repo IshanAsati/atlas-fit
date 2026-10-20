@@ -50,6 +50,9 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
   const previewItems = active?.items.map((item) => item.exerciseId) ?? nextDay?.exercises.map((item) => item.exerciseId) ?? [];
   const location = active?.location ?? plan?.location ?? profile?.activeLocation;
   const weeklySets = thisWeek.reduce((total, session) => total + completedWorkingSets(session), 0);
+  const weeklyGoal = profile?.daysPerWeek ?? 3;
+  const weeklyGoalCount = Math.min(thisWeek.length, weeklyGoal);
+  const weeklyGoalProgress = Math.min(100, Math.round((weeklyGoalCount / weeklyGoal) * 100));
   const muscleActivity: Partial<Record<MuscleId,number>> = {};
   for (const session of thisWeek) for (const item of session.items) {
     if (item.skipped) continue;
@@ -84,7 +87,8 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
     <header className="topbar today-header"><div><h1>Today</h1><p>{profile ? goalLabels[profile.goal] : 'Your training'} · {profile?.daysPerWeek ?? 3} days/week</p></div><button type="button" className="icon-btn" aria-label="Open settings" onClick={() => go('data')}><Icon name="settings" /></button></header>
     <main className="view">
        <section className="today-workout" aria-label="Next scheduled workout">
-        <div className="row between"><span className="small">{location ? locationLabels[location] : 'Your training'}</span>{(active || !nextDay) && <span className="small">{active ? 'Workout in progress' : plan ? 'Week complete' : 'Your first workout'}</span>}</div>
+        <div className="today-kicker"><span>{active ? 'Continue training' : 'Next up'}</span><span>{location ? locationLabels[location] : 'Your training'}</span></div>
+        {(active || !nextDay) && <p className="small today-status">{active ? 'Workout in progress' : plan ? 'Week complete' : 'Your first workout'}</p>}
         <h2 className="today-title">{active?.title ?? nextDay?.label ?? (plan ? 'Your week is complete' : 'Ready for your first workout?')}</h2>
         <p className="sub">{active ? 'Pick up where you left off. Your sets are saved.' : nextDay?.focus ?? (plan ? 'Take a rest day, or open your plan to repeat a workout.' : 'Open your plan to choose a workout for your time and equipment.')}</p>
         {profile?.trainingBlock?.enabled && <p className="small">{active?.blockContext
@@ -101,6 +105,10 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
         {previewItems.length > 0 && <button className="btn ghost block small-btn" disabled={downloading} onClick={() => void download()}><Icon name="download" size={17} />{downloading ? 'Saving images…' : 'Save offline images'}</button>}
         {mediaStatus && <p className="small" role="status">{mediaStatus}</p>}
         {previewItems.length > 0 && <button className="today-adjust" onClick={() => go('plan')}>Adjust workout <Icon name="arrow" size={16} /></button>}
+        <div className="today-quick-actions" aria-label="Workout shortcuts">
+          <button type="button" className="quick-action" onClick={() => go('plan')}><Icon name="plan" size={18} /><span><strong>Plan</strong><small>Shape your week</small></span></button>
+          <button type="button" className="quick-action" onClick={() => go('exercises')}><Icon name="library" size={18} /><span><strong>Library</strong><small>Find a movement</small></span></button>
+        </div>
       </section>
       <HealthSummary />
       <section className="today-destinations" aria-label="Cardio and nutrition">
@@ -108,8 +116,27 @@ export function HomeScreen({ onStartWorkout, onNavigateTab, onNavigate, onSelect
         <button type="button" className="destination-row" onClick={() => go('cardio')}><span><strong>Cardio</strong><span>Log walks, runs, rides, and more</span></span><Icon name="arrow" /></button>
         <button type="button" className="destination-row" onClick={() => go('nutrition')}><span><strong>Diet & Nutrition</strong><span>Indian meal plans and nutrition calculators</span></span><Icon name="arrow" /></button>
       </section>
-      <section aria-label="Weekly activity strip"><div className="section-heading"><h2 className="h-sec">This week</h2><span className="small">{thisWeek.length} of {profile?.daysPerWeek ?? 3} workouts</span></div>
-        <div className="strip" role="list">{strip.map((day) => <div key={day.label} role="listitem" className={`cell ${day.hit ? 'hit' : ''} ${day.today ? 'today' : ''}`} aria-label={`${day.label} ${day.day}, ${day.hit ? 'workout completed' : 'no workout'}`}><span>{day.label}</span><strong>{day.day}</strong>{day.hit && <Icon name="check" size={14} />}</div>)}</div>
+      <section className="weekly-goal-card" aria-labelledby="weekly-goal-heading">
+        <div className="weekly-goal-summary">
+          <div>
+            <p className="eyebrow">Your weekly target</p>
+            <h2 className="h-sec" id="weekly-goal-heading">{thisWeek.length} of {weeklyGoal} workouts</h2>
+            <p className="small">{thisWeek.length >= weeklyGoal ? 'Weekly target reached.' : `${weeklyGoal - thisWeek.length} more ${weeklyGoal - thisWeek.length === 1 ? 'workout' : 'workouts'} to reach your target.`}</p>
+          </div>
+          <div
+            className="weekly-goal-ring"
+            role="progressbar"
+            aria-label="Weekly training goal"
+            aria-valuemin={0}
+            aria-valuemax={weeklyGoal}
+            aria-valuenow={weeklyGoalCount}
+            aria-valuetext={`${thisWeek.length} of ${weeklyGoal} workouts completed this week`}
+            style={{ background: `conic-gradient(var(--action) ${weeklyGoalProgress}%, var(--surface-2) 0)` }}
+          >
+            <span aria-hidden="true">{thisWeek.length}<small>/{weeklyGoal}</small></span>
+          </div>
+        </div>
+        <div className="strip" role="list" aria-label="Workout days this week">{strip.map((day) => <div key={day.label} role="listitem" className={`cell ${day.hit ? 'hit' : ''} ${day.today ? 'today' : ''}`} aria-label={`${day.label} ${day.day}, ${day.hit ? 'workout completed' : 'no workout'}`}><span>{day.label}</span><strong>{day.day}</strong>{day.hit && <Icon name="check" size={14} />}</div>)}</div>
       </section>
       <section><div className="section-heading"><h2 className="h-sec">Last workout</h2><button className="today-link" onClick={() => go('bodygraph')}>View history <Icon name="arrow" size={16} /></button></div>
         {done[0] ? <button className="recent-session" onClick={() => go('bodygraph')}><div><strong>{done[0].title}</strong><p className="small">{new Date(done[0].endedAt ?? done[0].startedAt).toLocaleDateString(undefined,{ month: 'short', day: 'numeric' })} · {completedWorkingSets(done[0])} working {completedWorkingSets(done[0]) === 1 ? 'set' : 'sets'}</p></div><Icon name="arrow" /></button> : <div className="first-session-note"><strong>No completed workouts yet</strong><p className="sub">Finish a workout to see your sets and progress here.</p></div>}

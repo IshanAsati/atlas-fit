@@ -16,7 +16,7 @@ import { ExercisePicture } from '../../design/ExercisePicture';
 import { Icon } from '../../design/Icon';
 import { WorkoutTrainingTools, applySuggestedTarget, prependWarmups } from './WorkoutTrainingTools';
 import { PlateCalculator } from './PlateCalculator.tsx';
-import { MirrorDemo } from '../exercises/MirrorDemo';
+import { usePosePlayback } from '../exercises/usePosePlayback';
 
 
 export interface ActiveWorkoutScreenProps {
@@ -31,18 +31,27 @@ function WorkoutModal({ title, onClose, children }: { title: string; onClose: ()
 }
 
 function ExerciseFigure({ exercise }: { exercise: Exercise | undefined }) {
-  const [pose, setPose] = useState<'start' | 'peak'>('start');
-  const [failedImages, setFailedImages] = useState<string[]>([]);
-  const url = exercise ? getExerciseImageUrl(exercise, pose) : null;
+  const hasPosePair = Boolean(exercise && getExerciseImageUrl(exercise, 'start') &&
+    getExerciseImageUrl(exercise, 'peak') &&
+    getExerciseImageUrl(exercise, 'start') !== getExerciseImageUrl(exercise, 'peak'));
+  const { pose, selectPose, isPlaying, togglePlayback, reducedMotion } =
+    usePosePlayback(hasPosePair, exercise?.id);
+  const [mirrorAvailable, setMirrorAvailable] = useState(false);
+  useEffect(() => setMirrorAvailable(false), [exercise?.id]);
+  if (!exercise) return <figure className="workout-figure" />;
   return <figure className="workout-figure">
-    <div className="workout-pose-controls" aria-label="Exercise image position">
-      <button type="button" aria-pressed={pose === 'start'} onClick={() => setPose('start')}>Start position</button>
-      <button type="button" aria-pressed={pose === 'peak'} onClick={() => setPose('peak')}>End position</button>
-    </div>
-    {url && !failedImages.includes(url)
-      ? <img src={url} alt={`${exercise?.name}, ${pose === 'start' ? 'start' : 'end'} position`} onError={() => setFailedImages((old) => [...old, url])} />
-      : <div className="workout-image-fallback"><strong>Illustration unavailable</strong><span>{url ? 'This image could not load. Use the written form cues below.' : 'No illustration is available for this exercise. Use the written form cues below.'}</span></div>}
-    <figcaption>{pose === 'start' ? 'Start position' : 'End position'} · Reference illustration, not a form assessment.</figcaption>
+    {!mirrorAvailable && <div className="workout-pose-controls" aria-label="Exercise image position">
+      <button type="button" aria-pressed={pose === 'start'} onClick={() => selectPose('start')}>Start position</button>
+      <button type="button" aria-pressed={pose === 'peak'} onClick={() => selectPose('peak')}>End position</button>
+      {hasPosePair && <button type="button" aria-pressed={isPlaying} disabled={reducedMotion}
+        onClick={togglePlayback}>{isPlaying ? 'Pause preview' : 'Play pose preview'}</button>}
+    </div>}
+    <ExercisePicture key={`${exercise.id}-${pose}`} exercise={exercise} pose={pose} large onMirrorStatus={(status) => {
+      setMirrorAvailable(status === 'available');
+    }} />
+    <figcaption>{mirrorAvailable
+      ? 'Animated exercise demonstration from the online mirror catalogue.'
+      : `${pose === 'start' ? 'Start' : 'End'} position · RepDB reference illustration, not a form assessment.`}</figcaption>
   </figure>;
 }
 
@@ -373,7 +382,6 @@ export const ActiveWorkoutScreen: React.FC<ActiveWorkoutScreenProps> = ({ sessio
             {exercise && <div className="muscle-chips-row">{exercise.primary.map((muscle) => <span key={muscle}>{MUSCLE_BY_ID[muscle]?.short ?? muscle}</span>)}</div>}
           </div>
           <details className="workout-demonstration"><summary>Illustrations & form guidance</summary><ExerciseFigure exercise={exercise} />
-          {exercise && <MirrorDemo name={name} />}
           {exercise && <div className="workout-form-cues">
             <h3>How to do it</h3><ol>{exercise.instructions.map((instruction, index) => <li key={index}>{instruction}</li>)}</ol>
             <h3>Form cues</h3><ul>{exercise.cues.map((cue, index) => <li key={index}>{cue}</li>)}</ul>
